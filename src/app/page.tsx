@@ -10,9 +10,14 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { useEffect, useState, useRef, useCallback } from "react";
-import BookingCalendar from "@/components/BookingCalendar";
+import dynamic from "next/dynamic";
 import { getCategories, getPortfolioItems, getFeaturedItems, type PortfolioCategory, type PortfolioItem, HIRENA_CHANNEL } from "@/lib/db";
 import { useHirenaSync } from "@/lib/sync";
+
+const BookingCalendar = dynamic(() => import("@/components/BookingCalendar"), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse bg-[#F6F1EB] rounded-[16px] border border-[#EDE3DA]" />,
+});
 
 const WA_LINK =
   "https://wa.me/6285179763693?text=Halo%20Hirena%20Makeup%20saya%20mau%20tanya%20slot%20makeup";
@@ -270,7 +275,7 @@ function Header() {
           scrolled ? "bg-[#FFFCFA]/86 border-[#E2D5C6]/80 shadow-[0_4px_24px_rgba(0,0,0,0.06)]" : "bg-[#FFFCFA]/72 border-[#EDE3DA]"
         }`}
       >
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10 h-[72px] flex items-center justify-between">
+        <div className="mx-auto max-w-[1280px] px-6 lg:px-10 h-[72px] flex items-center justify-between">
           <div className="flex items-center gap-8">
             <a href="#" className="serif text-[18px] tracking-[0.18em] font-medium hover:opacity-80 transition">
               HIRENA MAKEUP
@@ -375,7 +380,7 @@ function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgres
             <div className="absolute top-[22%] left-1/2 -translate-x-1/2 w-[38%] h-[26%] rounded-full bg-gradient-to-b from-[#EDE3DA] to-[#C9A96E]/20 shadow-inner" />
           </>
         ) : (
-          <img src={item!.imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={item!.imageUrl} alt={title} loading="lazy" decoding="async" sizes="(max-width: 768px) 42vw, 33vw" className="absolute inset-0 w-full h-full object-cover" />
         )}
         <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-[#1A1A1A]/40 to-transparent">
           <div className="sans text-[9px] tracking-[0.16em] uppercase text-white">{title}</div>
@@ -418,7 +423,7 @@ function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgres
             <div className="absolute top-[22%] left-1/2 -translate-x-1/2 w-[16%] h-[9%] rounded-full bg-[#1A1A1A]/5 blur-[6px] mt-[22px]" />
           </>
         ) : (
-          <img src={item!.imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={item!.imageUrl} alt={title} loading="lazy" decoding="async" sizes="(max-width: 768px) 42vw, 33vw" className="absolute inset-0 w-full h-full object-cover" />
         )}
       </motion.div>
 
@@ -512,6 +517,7 @@ export default function Home() {
   const [featured, setFeatured] = useState<PortfolioItem[]>([]);
   const [galleryFilter, setGalleryFilter] = useState<string>("all");
   const [preview, setPreview] = useState<PortfolioItem | null>(null);
+  const [regulerTab, setRegulerTab] = useState<"basic" | "premium">("premium");
 
   const [showUpdate, setShowUpdate] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -532,7 +538,7 @@ export default function Home() {
     fetchPortfolio();
   }, [fetchPortfolio]);
 
-  useHirenaSync("portfolio", fetchPortfolio, 10000);
+  useHirenaSync("portfolio", fetchPortfolio, 15000);
 
   // popup realtime listeners
   const triggerUpdate = useCallback(() => {
@@ -588,7 +594,7 @@ export default function Home() {
           lastSeenRef.current = cur;
         }
       } catch {}
-    }, 10000);
+    }, 15000);
 
     return () => {
       try {
@@ -624,13 +630,6 @@ export default function Home() {
   }, []);
 
   const galleryItems = galleryFilter === "all" ? items : items.filter((it) => it.categoryId === galleryFilter);
-
-  // also sync gallery via broadcast for immediate refetch
-  useEffect(() => {
-    const handler = () => fetchPortfolio();
-    window.addEventListener("hirena:update", handler);
-    return () => window.removeEventListener("hirena:update", handler);
-  }, [fetchPortfolio]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -673,11 +672,11 @@ export default function Home() {
         <Header />
 
         {/* HERO */}
-        <section className="relative z-10 mx-auto max-w-[1280px] px-6 md:px-10 pt-10 md:pt-20 pb-12 md:pb-20">
-          <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-10 md:gap-16 lg:gap-20 items-start">
+        <section className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 pt-8 lg:pt-20 pb-10 lg:pb-20">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-20 items-start">
             <motion.div style={reduce ? {} : { y: heroY, opacity: heroOpacity, scale: heroScale }} className="will-change-transform">
               <Reveal>
-                <div className="flex items-center gap-3 mb-6 md:mb-8">
+                <div className="flex items-center gap-3 mb-5 lg:mb-8">
                   <GoldLine spring />
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E] font-medium">
                     Price List 2026 · Bandung
@@ -686,7 +685,7 @@ export default function Home() {
               </Reveal>
 
               {reduce ? (
-                <h1 className="serif text-[46px] md:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]">
+                <h1 className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]">
                   Soft Glam
                   <br />
                   <span className="serif2 italic font-light text-[#1A1A1A]/80">that still</span>
@@ -697,7 +696,7 @@ export default function Home() {
                 </h1>
               ) : (
                 <motion.h1
-                  className="serif text-[46px] md:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]"
+                  className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -734,30 +733,33 @@ export default function Home() {
               )}
 
               <Reveal delay={0.22}>
-                <p className="sans text-[13.5px] md:text-[14px] leading-[1.85] font-light text-[#1A1A1A]/70 max-w-[420px] mt-7">
+                <p className="sans text-[13px] lg:text-[14px] leading-[1.85] font-light text-[#1A1A1A]/70 max-w-[420px] mt-5 lg:mt-7">
                   Certified Bandung MUA Since 2022. Signature{" "}
                   <span className="text-[#1A1A1A] font-medium">low visual and soft glam look</span> · mostly using mix high
                   end, Asian and local products. Durasi 1.5 to 3 jam, detail oriented.
                 </p>
               </Reveal>
               <Reveal delay={0.28}>
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <MagneticCTA href={WA_LINK} variant="dark">
+                <div className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-3">
+                  <a
+                    href={WA_LINK}
+                    target="_blank"
+                    rel="noopener"
+                    className="w-full lg:w-auto sans text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-14 rounded-full inline-flex items-center justify-center gap-2 hover:bg-black shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition"
+                  >
                     Cek Slot · WA <span className="text-[#C9A96E]">→</span>
-                  </MagneticCTA>
-                  <motion.a
+                  </a>
+                  <a
                     href="#reguler"
-                    whileHover={reduce ? {} : { y: -2, scale: 1.01 }}
-                    whileTap={reduce ? {} : { scale: 0.98 }}
-                    className="sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white px-7 h-[48px] inline-flex items-center hover:bg-[#F6F1EB] hover:border-[#C9A96E]/30 hover:shadow-[0_4px_18px_rgba(201,169,110,0.12)] transition will-change-transform"
+                    className="w-full lg:w-auto sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white h-14 lg:h-[56px] rounded-full lg:rounded-none inline-flex items-center justify-center hover:bg-[#F6F1EB] hover:border-[#C9A96E]/30 transition"
                   >
                     Price List
-                  </motion.a>
+                  </a>
                 </div>
               </Reveal>
               <Reveal delay={0.34}>
-                <div className="mt-10 flex items-center gap-4 md:gap-6 border-t border-[#EDE3DA] pt-6 max-w-[380px]">
-                  <div className="flex -space-x-2">
+                <div className="mt-8 lg:mt-10 grid grid-cols-3 gap-3 lg:flex lg:items-center lg:gap-6 border-t border-[#EDE3DA] pt-6 max-w-[420px]">
+                  <div className="flex -space-x-2 justify-center lg:justify-start col-span-1">
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
@@ -770,7 +772,7 @@ export default function Home() {
                       </motion.div>
                     ))}
                   </div>
-                  <div className="sans text-[11px] leading-[1.5] text-[#1A1A1A]/60">
+                  <div className="sans text-[10px] lg:text-[11px] leading-[1.5] text-[#1A1A1A]/60 col-span-2 lg:col-auto">
                     <span className="text-[#1A1A1A] font-medium">
                       <CountUp to={500} suffix="+" />
                     </span>{" "}
@@ -778,6 +780,8 @@ export default function Home() {
                     <br />
                     IG @hirenamakeup
                   </div>
+                  <div className="hidden lg:block h-6 w-px bg-[#EDE3DA]" />
+                  <div className="hidden lg:block sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/40">Bandung · Since 2022</div>
                 </div>
               </Reveal>
             </motion.div>
@@ -794,14 +798,14 @@ export default function Home() {
               </div>
 
               {/* desktop grid */}
-              <div className="hidden md:grid grid-cols-3 gap-3">
+              <div className="hidden lg:grid grid-cols-3 gap-3">
                 {(featured.length > 0 ? featured : Array.from({ length: 9 }).map((_, i) => null)).map((it, i) => (
                   <PortfolioCard key={it ? it.id : i} i={i} scrollYProgress={scrollYProgress} item={it || undefined} />
                 ))}
               </div>
 
               {/* mobile snap */}
-              <div className="md:hidden -mx-6 px-6">
+              <div className="lg:hidden -mx-6 px-6">
                 <div
                   className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none"
                   style={{ scrollbarWidth: "none" }}
@@ -831,7 +835,7 @@ export default function Home() {
                             <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-[42%] h-[26%] rounded-full bg-gradient-to-b from-[#EDE3DA] to-[#C9A96E]/20" />
                           </>
                         ) : (
-                          <img src={it!.imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+                          <img src={it!.imageUrl} alt={title} loading="lazy" decoding="async" sizes="42vw" className="absolute inset-0 w-full h-full object-cover" />
                         )}
                         <div className="absolute bottom-2 inset-x-2 text-center sans text-[8px] tracking-[0.14em] uppercase text-[#1A1A1A]/60 bg-white/80 backdrop-blur rounded-full py-1">
                           {title}
@@ -860,15 +864,15 @@ export default function Home() {
         </section>
 
         {/* PORTFOLIO GALERI KATEGORI */}
-        <section id="portfolio" className="relative z-10 mx-auto max-w-[1280px] px-6 md:px-10 py-8 md:py-12">
+        <section id="portfolio" className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 py-8 lg:py-12">
           <Reveal>
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 lg:gap-6 mb-6 lg:mb-8">
               <div>
                 <div className="flex items-center gap-3">
                   <GoldLine spring />
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">Portfolio · Galeri</span>
                 </div>
-                <h2 className="serif text-[30px] md:text-[44px] leading-[0.95] mt-3">
+                <h2 className="serif text-[28px] lg:text-[44px] leading-[0.95] mt-3">
                   Karya kurasi
                   <br />
                   <span className="serif2 italic font-light">per kategori.</span>
@@ -880,12 +884,12 @@ export default function Home() {
             </div>
           </Reveal>
 
-          {/* filter pills */}
-          <Reveal delay={0.06}>
-            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-3 -mx-6 px-6 md:mx-0 md:px-0 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+          {/* filter pills - mobile sticky */}
+          <div className="sticky top-[72px] z-10 -mx-6 px-6 lg:mx-0 lg:px-0 bg-[#FFFCFA]/95 backdrop-blur supports-[backdrop-filter]:bg-[#FFFCFA]/85 border-b border-[#EDE3DA]/0 lg:border-0 lg:static lg:bg-transparent lg:backdrop-blur-none py-3 lg:py-0 mb-2 lg:mb-0">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
               <button
                 onClick={() => setGalleryFilter("all")}
-                className={`shrink-0 snap-start sans text-[11px] tracking-[0.12em] uppercase px-5 h-9 rounded-full border transition ${galleryFilter === "all" ? "bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-[0_4px_12px_rgba(0,0,0,0.12)]" : "bg-white border-[#EDE3DA] text-[#1A1A1A] hover:border-[#C9A96E]/30 hover:bg-[#F6F1EB]"}`}
+                className={`shrink-0 snap-start sans text-[11px] tracking-[0.12em] uppercase px-4 lg:px-5 h-8 lg:h-9 rounded-full border transition ${galleryFilter === "all" ? "bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-[0_4px_12px_rgba(0,0,0,0.12)]" : "bg-white border-[#EDE3DA] text-[#1A1A1A] hover:border-[#C9A96E]/30 hover:bg-[#F6F1EB]"}`}
               >
                 Semua {items.length > 0 && `· ${items.length}`}
               </button>
@@ -896,17 +900,17 @@ export default function Home() {
                   <button
                     key={c.id}
                     onClick={() => setGalleryFilter(c.id)}
-                    className={`shrink-0 snap-start sans text-[11px] tracking-[0.12em] uppercase px-5 h-9 rounded-full border transition ${active ? "bg-[#C9A96E] text-[#1A1A1A] border-[#C9A96E] shadow-[0_4px_12px_rgba(201,169,110,0.2)] font-medium" : "bg-white border-[#EDE3DA] text-[#1A1A1A] hover:border-[#C9A96E]/30 hover:bg-[#F6F1EB]"}`}
+                    className={`shrink-0 snap-start sans text-[11px] tracking-[0.12em] uppercase px-4 lg:px-5 h-8 lg:h-9 rounded-full border transition ${active ? "bg-[#C9A96E] text-[#1A1A1A] border-[#C9A96E] shadow-[0_4px_12px_rgba(201,169,110,0.2)] font-medium" : "bg-white border-[#EDE3DA] text-[#1A1A1A] hover:border-[#C9A96E]/30 hover:bg-[#F6F1EB]"}`}
                   >
                     {c.name} {count > 0 && `· ${count}`}
                   </button>
                 );
               })}
             </div>
-          </Reveal>
+          </div>
 
-          {/* gallery grid */}
-          <motion.div layout className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5 mt-2">
+          {/* gallery grid - mobile 1col premium card, desktop 3col */}
+          <motion.div layout className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 mt-2">
             <AnimatePresence mode="popLayout">
               {galleryItems.map((item) => {
                 const catName = categories.find((c) => c.id === item.categoryId)?.name || "Tanpa kategori";
@@ -923,7 +927,7 @@ export default function Home() {
                     onClick={() => setPreview(item)}
                     className="group relative bg-[#FFFCFA] rounded-[22px] border border-[#EDE3DA] overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] hover:border-[#C9A96E]/20 cursor-pointer will-change-transform"
                   >
-                    <div className="aspect-[3/4] relative overflow-hidden bg-[#F6F1EB]">
+                    <div className="aspect-[4/3] lg:aspect-[3/4] relative overflow-hidden bg-[#F6F1EB]">
                       {isGradient ? (
                         <>
                           <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" />
@@ -932,7 +936,7 @@ export default function Home() {
                           <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-[38%] h-[24%] rounded-full bg-gradient-to-b from-[#EDE3DA] to-[#C9A96E]/20" />
                         </>
                       ) : (
-                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-700" />
+                        <img src={item.imageUrl} alt={item.title} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 33vw" className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-700" />
                       )}
                       <div className="absolute top-3 left-3 sans text-[10px] tracking-[0.12em] uppercase bg-white/90 backdrop-blur px-3 py-1 rounded-full border border-[#EDE3DA] shadow-sm">
                         {catName}
@@ -940,7 +944,7 @@ export default function Home() {
                       {item.featured && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#C9A96E] border-2 border-white shadow" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/0 via-transparent to-transparent group-hover:from-[#1A1A1A]/30 transition duration-500" />
                     </div>
-                    <div className="p-4">
+                    <div className="p-3 lg:p-4">
                       <div className="serif text-[15px] leading-[1.3] truncate">{item.title}</div>
                       <div className="sans text-[11px] leading-[1.6] text-[#1A1A1A]/50 truncate mt-1">{item.description || "Soft glam look"}</div>
                       <div className="mt-3 flex items-center justify-between">
@@ -963,7 +967,7 @@ export default function Home() {
           )}
 
           <Reveal delay={0.12}>
-            <div className="mt-8 flex flex-wrap gap-3 justify-center md:justify-start">
+            <div className="mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
               <a href={IG_LINK} target="_blank" rel="noopener" className="sans text-[11px] tracking-[0.14em] uppercase border border-[#EDE3DA] bg-white px-6 h-11 inline-flex items-center hover:bg-[#F6F1EB] transition rounded-full">
                 Lihat IG @hirenamakeup
               </a>
@@ -997,7 +1001,7 @@ export default function Home() {
                   {preview.imageUrl.startsWith("gradient:") ? (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" />
                   ) : (
-                    <img src={preview.imageUrl} alt={preview.title} className="w-full h-full object-cover" />
+                    <img src={preview.imageUrl} alt={preview.title} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 560px" className="w-full h-full object-cover" />
                   )}
                   <button onClick={() => setPreview(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-[#EDE3DA] flex items-center justify-center hover:bg-white transition">
                     <span className="text-[16px] leading-none">×</span>
@@ -1025,26 +1029,26 @@ export default function Home() {
 
         {/* ASAL USUL */}
         <section className="relative z-10 bg-[#F6F1EB] border-y border-[#EDE3DA]">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-12 md:py-20">
-            <div className="grid md:grid-cols-[0.75fr_1.25fr] gap-8 md:gap-16 items-start">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-10 lg:py-20">
+            <div className="grid lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-16 items-start">
               <Reveal>
-                <div className="flex items-center gap-3 md:block">
+                <div className="flex items-center gap-3 lg:block">
                   <div className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E] flex items-center gap-3">
-                    <span className="hidden md:block w-8 h-px bg-[#C9A96E]" />
+                    <span className="hidden lg:block w-8 h-px bg-[#C9A96E]" />
                     Asal Usul
                   </div>
-                  <div className="md:hidden w-6 h-px bg-[#C9A96E]" />
+                  <div className="lg:hidden w-6 h-px bg-[#C9A96E]" />
                 </div>
-                <h2 className="serif text-[30px] md:text-[42px] leading-[0.95] mt-3">
+                <h2 className="serif text-[28px] lg:text-[42px] leading-[0.95] mt-3">
                   From 2022,
                   <br />
                   <span className="serif2 italic font-light">Tempaan Signature</span>
                 </h2>
-                <div className="mt-5 w-12 h-px bg-[#C9A96E] hidden md:block" />
+                <div className="mt-5 w-12 h-px bg-[#C9A96E] hidden lg:block" />
               </Reveal>
               <div>
                 <Reveal delay={0.08}>
-                  <div className="sans text-[13px] md:text-[13.5px] leading-[1.85] text-[#1A1A1A]/70 space-y-4">
+                  <div className="sans text-[13px] lg:text-[13.5px] leading-[1.85] text-[#1A1A1A]/70 space-y-4">
                     <p>
                       Hirena memulai perjalanan sejak 2022 dengan obsesi pada detail yang halus. Bukan makeup yang
                       mengubah wajah, tapi yang mengangkat karakter aslinya. Soft glam yang tetap terlihat seperti kamu,
@@ -1091,15 +1095,15 @@ export default function Home() {
         </section>
 
         {/* REGULER */}
-        <section id="reguler" className="relative z-10 mx-auto max-w-[1280px] px-6 md:px-10 py-14 md:py-20">
+        <section id="reguler" className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 py-10 lg:py-20">
           <Reveal>
-            <div className="flex flex-wrap items-end justify-between gap-6 mb-10">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 lg:gap-6 mb-6 lg:mb-10">
               <div>
                 <div className="flex items-center gap-3">
                   <GoldLine spring />
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">Pricelist Reguler 2026</span>
                 </div>
-                <h2 className="serif text-[32px] md:text-[44px] leading-[0.95] mt-3">
+                <h2 className="serif text-[28px] lg:text-[44px] leading-[0.95] mt-3">
                   Wisuda, Event
                   <br />
                   <span className="serif2 italic font-light">and Daily Glam</span>
@@ -1111,11 +1115,105 @@ export default function Home() {
             </div>
           </Reveal>
 
-          <div className="grid md:grid-cols-2 gap-6 md:gap-[14px]">
+          {/* mobile tabs BASIC | PREMIUM */}
+          <div className="lg:hidden flex p-1 bg-[#F6F1EB] rounded-full border border-[#EDE3DA] mb-5">
+            <button
+              onClick={() => setRegulerTab("basic")}
+              className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "basic" ? "bg-white shadow-sm border border-[#EDE3DA] text-[#1A1A1A]" : "text-[#1A1A1A]/60"}`}
+            >
+              Basic
+            </button>
+            <button
+              onClick={() => setRegulerTab("premium")}
+              className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "premium" ? "bg-[#1A1A1A] text-white shadow-sm" : "text-[#1A1A1A]/60"}`}
+            >
+              Premium
+            </button>
+          </div>
+
+          {/* mobile single card */}
+          <div className="lg:hidden">
+            {regulerTab === "basic" ? (
+              <motion.div
+                key="basic-m"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-6 shadow-sm"
+              >
+                <div className="flex items-baseline justify-between">
+                  <h3 className="serif text-[20px] tracking-[0.12em]">BASIC</h3>
+                  <span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span>
+                </div>
+                <div className="mt-6 space-y-5">
+                  {[
+                    { title: "Make Up Only", price: "350K", desc: "1.5 to 2 jam tanpa retouch, include softlens normal" },
+                    { title: "+ Retouch Standby 3h", price: "650K", desc: "Standby di lokasi 3 jam, free mini touch up" },
+                    { title: "+ Retouch Follow 8h", price: "1.100K", desc: "Follow 8 jam, touch up on demand, free kit" },
+                    { title: "Mom Mature 40 to 60", price: "400K", desc: "Lift effect, soft glam mature, 1.5 jam" },
+                  ].map((it) => (
+                    <div key={it.title} className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0">
+                      <div>
+                        <div className="sans text-[12px] font-medium tracking-[0.02em]">{it.title}</div>
+                        <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.desc}</div>
+                      </div>
+                      <div className="serif text-[18px] shrink-0">{it.price}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60">
+                  Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.
+                </div>
+                <a href={WA_LINK} target="_blank" rel="noopener" className="mt-5 w-full h-11 rounded-full bg-white border border-[#EDE3DA] sans text-[11px] tracking-[0.14em] uppercase inline-flex items-center justify-center hover:bg-[#F6F1EB] transition">
+                  Book Basic · WA
+                </a>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="premium-m"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[24px] p-6 overflow-hidden shadow-sm border border-[#1A1A1A]"
+              >
+                <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
+                <div className="absolute top-5 right-5 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">
+                  Most Booked
+                </div>
+                <div className="flex items-baseline gap-3">
+                  <h3 className="serif text-[20px] tracking-[0.12em]">PREMIUM</h3>
+                  <span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span>
+                </div>
+                <div className="mt-6 space-y-5">
+                  {[
+                    { title: "Make Up Only", price: "550K", desc: "1.5 to 2 jam, high end mix, free mini kit" },
+                    { title: "+ Retouch Standby 3h", price: "850K", desc: "Standby 3 jam di venue, finishing detail" },
+                    { title: "+ Retouch Follow 8h", price: "1.300K", desc: "Follow seharian, look locked all day" },
+                  ].map((it) => (
+                    <div key={it.title} className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0">
+                      <div>
+                        <div className="sans text-[12px] font-medium">{it.title}</div>
+                        <div className="sans text-[11px] text-white/50 mt-1">{it.desc}</div>
+                      </div>
+                      <div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">
+                  Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.
+                </div>
+                <a href={WA_LINK} target="_blank" rel="noopener" className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 rounded-full inline-flex items-center justify-center hover:bg-[#ddbf8b] transition font-medium">
+                  Book Premium · WA
+                </a>
+              </motion.div>
+            )}
+          </div>
+
+          <div className="hidden lg:grid lg:grid-cols-2 lg:gap-[14px]">
             <Reveal>
               <motion.div
                 whileHover={reduce ? {} : { y: -4 }}
-                className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-7 md:p-9 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] hover:border-[#C9A96E]/20 transition will-change-transform group"
+                className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-7 lg:p-9 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] hover:border-[#C9A96E]/20 transition will-change-transform group"
               >
                 <div className="flex items-baseline justify-between">
                   <h3 className="serif text-[22px] tracking-[0.12em]">BASIC</h3>
@@ -1169,7 +1267,7 @@ export default function Home() {
                 {reduce && <div className="absolute inset-0 bg-[#C9A96E]/20" />}
                 <motion.div
                   whileHover={reduce ? {} : { y: -4, scale: 1.005 }}
-                  className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[23px] p-7 md:p-9 overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.18)] will-change-transform"
+                  className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[23px] p-7 lg:p-9 overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.18)] will-change-transform"
                 >
                   <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
                   <motion.div
@@ -1225,8 +1323,8 @@ export default function Home() {
         </section>
 
         {/* BRIDE */}
-        <section id="bride" className="relative z-10 bg-[#F6F1EB] border-y border-[#EDE3DA] py-14 md:py-20">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <section id="bride" className="relative z-10 bg-[#F6F1EB] border-y border-[#EDE3DA] py-10 lg:py-20">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
             <Reveal>
               <div className="text-center max-w-[640px] mx-auto">
                 <div className="flex items-center justify-center gap-3">
@@ -1234,12 +1332,12 @@ export default function Home() {
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">Bride Pricelist 2026</span>
                   <GoldLine spring />
                 </div>
-                <h2 className="serif text-[30px] md:text-[44px] leading-[0.95] mt-4">Curated for your once in a lifetime</h2>
-                <p className="serif2 italic text-[16px] md:text-[18px] text-[#1A1A1A]/60 mt-3">Akad / Pemberkatan and Resepsi</p>
+                <h2 className="serif text-[28px] lg:text-[44px] leading-[0.95] mt-4">Curated for your once in a lifetime</h2>
+                <p className="serif2 italic text-[16px] lg:text-[18px] text-[#1A1A1A]/60 mt-3">Akad / Pemberkatan and Resepsi</p>
               </div>
             </Reveal>
 
-            <div className="mt-10 grid md:grid-cols-2 gap-[1px] bg-[#EDE3DA] border border-[#EDE3DA] rounded-[24px] overflow-hidden">
+            <div className="mt-8 lg:mt-10 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-[1px] lg:bg-[#EDE3DA] lg:border lg:border-[#EDE3DA] lg:rounded-[24px] lg:overflow-hidden">
               {[
                 {
                   name: "SAPPHIRE",
@@ -1311,7 +1409,7 @@ export default function Home() {
                       ? { scale: 1.015, transition: { type: "spring", stiffness: 300, damping: 22 } }
                       : { y: -3, transition: { type: "spring", stiffness: 320, damping: 22 } }
                   }
-                  className={`p-7 md:p-10 relative will-change-transform hover:z-10 ${r.accent ? "bg-[#1A1A1A] text-white hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]" : "bg-[#FFFCFA] hover:shadow-[0_8px_30px_rgba(201,169,110,0.12)] hover:border-[#C9A96E]/20"} transition-shadow`}
+                  className={`p-7 lg:p-10 relative will-change-transform hover:z-10 rounded-[24px] shadow-sm lg:rounded-none lg:shadow-none border border-[#EDE3DA] lg:border-0 ${r.accent ? "bg-[#1A1A1A] text-white lg:hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]" : "bg-[#FFFCFA] lg:hover:shadow-[0_8px_30px_rgba(201,169,110,0.12)]"} transition-shadow`}
                 >
                   {r.accent && !reduce && (
                     <motion.div
@@ -1329,10 +1427,10 @@ export default function Home() {
                     </div>
                   )}
                   <div className="flex items-baseline gap-4 mb-2">
-                    <h3 className={`serif text-[20px] md:text-[24px] tracking-[0.08em] ${r.accent ? "text-white" : ""}`}>
+                    <h3 className={`serif text-[20px] lg:text-[24px] tracking-[0.08em] ${r.accent ? "text-white" : ""}`}>
                       {r.name}
                     </h3>
-                    <span className={`serif text-[20px] md:text-[22px] ${r.accent ? "text-[#C9A96E]" : "text-[#1A1A1A]"}`}>
+                    <span className={`serif text-[20px] lg:text-[22px] ${r.accent ? "text-[#C9A96E]" : "text-[#1A1A1A]"}`}>
                       {r.price}
                     </span>
                   </div>
@@ -1358,9 +1456,9 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-10 grid md:grid-cols-[1.1fr_0.9fr] gap-6 md:gap-8">
+            <div className="mt-8 lg:mt-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-6 lg:gap-8">
               <Reveal>
-                <motion.div whileHover={reduce ? {} : { y: -3 }} className="bg-[#FFFCFA] rounded-[20px] border border-[#EDE3DA] p-7 md:p-8 hover:border-[#C9A96E]/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition will-change-transform">
+                <motion.div whileHover={reduce ? {} : { y: -3 }} className="bg-[#FFFCFA] rounded-[20px] border border-[#EDE3DA] p-7 lg:p-8 hover:border-[#C9A96E]/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition will-change-transform">
                   <h4 className="serif text-[18px] mb-6 flex items-center gap-3">
                     <span className="w-6 h-px bg-[#C9A96E]" />
                     Additional Price List
@@ -1386,7 +1484,7 @@ export default function Home() {
               </Reveal>
               <div className="space-y-6">
                 <Reveal delay={0.08}>
-                  <motion.div whileHover={reduce ? {} : { y: -3 }} className="bg-[#FFFCFA] rounded-[20px] border border-[#EDE3DA] p-7 md:p-8 hover:border-[#C9A96E]/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition will-change-transform">
+                  <motion.div whileHover={reduce ? {} : { y: -3 }} className="bg-[#FFFCFA] rounded-[20px] border border-[#EDE3DA] p-7 lg:p-8 hover:border-[#C9A96E]/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition will-change-transform">
                     <h4 className="serif text-[18px] mb-4">Hijab Styling</h4>
                     <div className="grid grid-cols-2 gap-6 sans text-[12px] leading-[1.7]">
                       <div>
@@ -1409,7 +1507,7 @@ export default function Home() {
                   </motion.div>
                 </Reveal>
                 <Reveal delay={0.12}>
-                  <motion.div whileHover={reduce ? {} : { scale: 1.01 }} className="rounded-[20px] bg-[#1A1A1A] text-white p-7 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] transition will-change-transform">
+                  <motion.div whileHover={reduce ? {} : { scale: 1.01 }} className="rounded-[20px] bg-[#1A1A1A] text-white p-7 lg:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] transition will-change-transform">
                     <div>
                       <div className="serif text-[18px]">Butuh pricelist lengkap PDF?</div>
                       <div className="sans text-[11px] text-white/50 mt-1">Katalog WA sudah include T and C lengkap</div>
@@ -1429,42 +1527,31 @@ export default function Home() {
         </section>
 
         {/* NOTES */}
-        <section id="notes" className="relative z-10 mx-auto max-w-[1280px] px-6 md:px-10 py-14 md:py-20">
-          <div className="grid md:grid-cols-[0.8fr_1.2fr] gap-8 md:gap-12">
+        <section id="notes" className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 py-10 lg:py-20">
+          <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-8 lg:gap-12">
             <Reveal>
               <div className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E] mb-4">Notes and Terms</div>
-              <h2 className="serif text-[32px] md:text-[44px] leading-[0.95]">
+              <h2 className="serif text-[28px] lg:text-[44px] leading-[0.95]">
                 Mohon dibaca
                 <br />
                 <span className="serif2 italic font-light">sebelum booking.</span>
               </h2>
               <div className="mt-6 w-12 h-px bg-[#C9A96E]" />
             </Reveal>
-            <StaggerReveal className="grid sm:grid-cols-2 gap-4 md:gap-5">
+            <StaggerReveal className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
               {[
-                {
-                  t: "DP and Pelunasan",
-                  d: "DP min 1.000K untuk bride package. Pelunasan H-7 sebelum hari H. Booking dianggap sudah baca Terms and Condition di katalog WA.",
-                },
-                {
-                  t: "Durasi",
-                  d: "Bride 2.5 to 3 jam, Reguler 1.5 to 2 jam. Mohon datang dengan kondisi wajah bersih, sudah skincare ringan.",
-                },
-                {
-                  t: "Transport",
-                  d: "Bandung and Cimahi 50K to 150K (max 20KM). Wedding 200K to 500K. Luar Bandung (Jakarta, Bekasi, Tasik, dll) +1.000K + transport / makan / akomodasi.",
-                },
-                {
-                  t: "Hijab and Hair",
-                  d: "Hairdo/hijabdo by partner stylist. Hijab by MUA hanya segi empat clean look. Client wajib bawa ciput, inner, scrunchie sendiri.",
-                },
+                { t: "DP and Pelunasan", d: "DP min 1.000K untuk bride package. Pelunasan H-7 sebelum hari H. Booking dianggap sudah baca Terms and Condition di katalog WA.", icon: "◆" },
+                { t: "Durasi", d: "Bride 2.5 to 3 jam, Reguler 1.5 to 2 jam. Mohon datang dengan kondisi wajah bersih, sudah skincare ringan.", icon: "◐" },
+                { t: "Transport", d: "Bandung and Cimahi 50K to 150K (max 20KM). Wedding 200K to 500K. Luar Bandung (Jakarta, Bekasi, Tasik, dll) +1.000K + transport / makan / akomodasi.", icon: "◎" },
+                { t: "Hijab and Hair", d: "Hairdo/hijabdo by partner stylist. Hijab by MUA hanya segi empat clean look. Client wajib bawa ciput, inner, scrunchie sendiri.", icon: "✦" },
               ].map((r) => (
                 <motion.div
                   key={r.t}
                   variants={revealVariants}
                   whileHover={reduce ? {} : { y: -3, scale: 1.01 }}
-                  className="bg-[#F6F1EB]/70 rounded-[16px] p-6 border border-[#EDE3DA]/60 h-full hover:bg-white hover:border-[#C9A96E]/20 hover:shadow-[0_8px_22px_rgba(0,0,0,0.06)] transition will-change-transform"
+                  className="bg-white lg:bg-[#F6F1EB]/70 rounded-[16px] p-6 border border-[#EDE3DA] lg:border-[#EDE3DA]/60 h-full shadow-sm lg:shadow-none hover:bg-white hover:border-[#C9A96E]/20 hover:shadow-[0_8px_22px_rgba(0,0,0,0.06)] transition will-change-transform"
                 >
+                  <div className="w-8 h-8 rounded-full bg-[#C9A96E]/10 border border-[#C9A96E]/20 flex items-center justify-center sans text-[11px] text-[#C9A96E] mb-3">{r.icon}</div>
                   <div className="sans text-[11px] tracking-[0.14em] uppercase font-medium mb-2">{r.t}</div>
                   <div className="sans text-[12.5px] leading-[1.8] text-[#1A1A1A]/65">{r.d}</div>
                 </motion.div>
@@ -1474,11 +1561,11 @@ export default function Home() {
         </section>
 
         {/* VIDEO */}
-        <section className="relative z-10 mx-auto max-w-[1280px] px-6 md:px-10 pb-12 md:pb-16">
+        <section className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 pb-10 lg:pb-16">
           <Reveal>
             <motion.div
               whileHover={reduce ? {} : { scale: 1.005 }}
-              className="relative rounded-[24px] md:rounded-[28px] overflow-hidden bg-[#1A1A1A] aspect-[16/9] md:aspect-[16/6] flex items-center justify-center border border-[#1A1A1A] shadow-[0_16px_50px_rgba(0,0,0,0.15)] group will-change-transform"
+              className="relative rounded-[24px] lg:rounded-[28px] overflow-hidden bg-[#1A1A1A] aspect-[16/9] lg:aspect-[16/6] flex items-center justify-center border border-[#1A1A1A] shadow-[0_16px_50px_rgba(0,0,0,0.15)] group will-change-transform"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#1A1A1A] via-[#1A1A1A] to-[#C9A96E]/20" />
               <div
@@ -1504,15 +1591,15 @@ export default function Home() {
                   target="_blank"
                   whileHover={reduce ? {} : { scale: 1.06 }}
                   whileTap={reduce ? {} : { scale: 0.96 }}
-                  className="mx-auto w-[64px] h-[64px] md:w-[72px] md:h-[72px] rounded-full border border-white/20 flex items-center justify-center backdrop-blur bg-white/10 hover:bg-white/15 transition cursor-pointer flex-col shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+                  className="mx-auto w-[64px] h-[64px] lg:w-[72px] lg:h-[72px] rounded-full border border-white/20 flex items-center justify-center backdrop-blur bg-white/10 hover:bg-white/15 transition cursor-pointer flex-col shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
                 >
                   <div className="w-0 h-0 border-l-[14px] border-l-white border-y-[9px] border-y-transparent ml-1" />
                 </motion.a>
-                <div className="mt-6 serif text-white text-[20px] md:text-[28px]">Video Pekerjaan</div>
+                <div className="mt-6 serif text-white text-[20px] lg:text-[28px]">Video Pekerjaan</div>
                 <div className="sans text-[11px] tracking-[0.16em] uppercase text-white/50 mt-2">Reels · TikTok · Behind The Brush</div>
                 <div className="mt-3 sans text-[11px] text-white/30">@hirenamakeup · link di bio IG</div>
               </div>
-              <div className="absolute bottom-5 left-6 md:left-10 sans text-[10px] tracking-[0.18em] uppercase text-white/30">
+              <div className="absolute bottom-5 left-6 lg:left-10 sans text-[10px] tracking-[0.18em] uppercase text-white/30">
                 Play · Signature Soft Glam Motion
               </div>
             </motion.div>
@@ -1520,16 +1607,16 @@ export default function Home() {
         </section>
 
         {/* TESTIMONI */}
-        <section className="relative z-10 bg-[#FFFCFA] border-t border-[#EDE3DA] py-12 md:py-20">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <section className="relative z-10 bg-[#FFFCFA] border-t border-[#EDE3DA] py-10 lg:py-20">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
             <Reveal>
-              <div className="flex items-center gap-3 mb-8 md:mb-10">
+              <div className="flex items-center gap-3 mb-6 lg:mb-10">
                 <GoldLine spring />
                 <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">Testimoni Client</span>
               </div>
             </Reveal>
 
-            <div className="hidden md:grid md:grid-cols-3 gap-[1px] bg-[#EDE3DA] border border-[#EDE3DA] rounded-[20px] overflow-hidden">
+            <div className="hidden lg:grid lg:grid-cols-3 gap-[1px] bg-[#EDE3DA] border border-[#EDE3DA] rounded-[20px] overflow-hidden">
               {[
                 {
                   name: "Dinda · Bride SAPPHIRE",
@@ -1563,35 +1650,34 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="md:hidden -mx-6 px-6">
-              <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2">
-                {[
-                  { name: "Dinda · Bride SAPPHIRE", text: "Makeupnya bener bener soft glam, masih kayak aku tapi manglingi. Mama mama juga puas, hijabnya clean banget. Worth it!" },
-                  { name: "Salsa · Wisuda Premium", text: "Request look Thai soft, hasilnya dapet banget. Tahan 10 jam, foto tetep flawless. Touch up kitnya kepake banget." },
-                  { name: "Mom Rina · Mature", text: "Umur 52 tapi makeupnya gak berat, lift effect. Hirena sabar banget, detail. Bakal langganan keluarga." },
-                ].map((r) => (
-                  <div key={r.name} className="shrink-0 snap-start w-[84%] bg-[#F6F1EB] rounded-[20px] border border-[#EDE3DA] p-6">
-                    <div className="serif2 italic text-[17px] leading-[1.55] text-[#1A1A1A]/85">"{r.text}"</div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="sans text-[11px] tracking-[0.06em] uppercase text-[#1A1A1A]/60">{r.name}</div>
-                      <div className="text-[#C9A96E] text-[11px]">★★★★★</div>
-                    </div>
+            <div className="lg:hidden space-y-4">
+              {[
+                { name: "Dinda · Bride SAPPHIRE", text: "Makeupnya bener bener soft glam, masih kayak aku tapi manglingi. Mama mama juga puas, hijabnya clean banget. Worth it!" },
+                { name: "Salsa · Wisuda Premium", text: "Request look Thai soft, hasilnya dapet banget. Tahan 10 jam, foto tetep flawless. Touch up kitnya kepake banget." },
+                { name: "Mom Rina · Mature", text: "Umur 52 tapi makeupnya gak berat, lift effect. Hirena sabar banget, detail. Bakal langganan keluarga." },
+              ].map((r) => (
+                <div key={r.name} className="bg-white rounded-[20px] border border-[#EDE3DA] p-6 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-[#C9A96E]/10 border border-[#C9A96E]/20 flex items-center justify-center text-[#C9A96E] text-[12px] mb-3">“</div>
+                  <div className="serif2 italic text-[16px] leading-[1.55] text-[#1A1A1A]/85">"{r.text}"</div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="sans text-[11px] tracking-[0.06em] uppercase text-[#1A1A1A]/60">{r.name}</div>
+                    <div className="text-[#C9A96E] text-[11px]">★★★★★</div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* BOOKING CALENDAR */}
-        <section id="booking-calendar" className="relative z-10 bg-[#F6F1EB] border-t border-[#EDE3DA] py-12 md:py-20">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <section id="booking-calendar" className="relative z-10 bg-[#F6F1EB] border-t border-[#EDE3DA] py-10 lg:py-20">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
             <Reveal>
               <div className="flex items-center gap-3 mb-4">
                 <GoldLine spring />
                 <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">Cek Ketersediaan</span>
               </div>
-              <h2 className="serif text-[30px] md:text-[42px] leading-[0.95]">
+              <h2 className="serif text-[28px] lg:text-[42px] leading-[0.95]">
                 Lihat slot kosong
                 <br />
                 <span className="serif2 italic font-light">dan terisi.</span>
@@ -1602,7 +1688,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={0.08}>
-              <div className="mt-8 md:mt-10 max-w-[860px]">
+              <div className="mt-6 lg:mt-10 max-w-[860px]">
                 <BookingCalendar mode="customer" />
               </div>
             </Reveal>
@@ -1620,7 +1706,7 @@ export default function Home() {
         </section>
 
         {/* CONTACT */}
-        <section id="contact" className="relative z-10 bg-[#1A1A1A] text-[#FFFCFA] py-14 md:py-28 overflow-hidden">
+        <section id="contact" className="relative z-10 bg-[#1A1A1A] text-[#FFFCFA] py-12 lg:py-28 overflow-hidden">
           {!reduce && (
             <motion.div
               className="absolute -top-24 -right-24 w-[520px] h-[520px] bg-[#C9A96E]/08 blur-[80px] rounded-full pointer-events-none"
@@ -1628,21 +1714,21 @@ export default function Home() {
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
           )}
-          <div className="mx-auto max-w-[1280px] px-6 md:px-10 relative">
-            <div className="grid md:grid-cols-[1.15fr_0.85fr] gap-10 md:gap-12 items-end">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 relative">
+            <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-end">
               <Reveal>
                 <div className="flex items-center gap-3 mb-6">
                   <GoldLine />
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E]">September 2026</span>
                 </div>
-                <h2 className="serif text-[40px] md:text-[64px] leading-[0.9] tracking-[-0.02em]">
+                <h2 className="serif text-[36px] lg:text-[64px] leading-[0.9] tracking-[-0.02em]">
                   Sisa slot
                   <br />
                   September
                   <br />
                   <span className="serif2 italic font-light text-white/70">terbatas.</span>
                 </h2>
-                <div className="md:hidden mt-6 h-px w-12 bg-[#C9A96E]" />
+                <div className="lg:hidden mt-6 h-px w-12 bg-[#C9A96E]" />
               </Reveal>
               <Reveal delay={0.1}>
                 <p className="sans text-[13px] leading-[1.8] font-light text-white/60 max-w-[360px]">
@@ -1664,7 +1750,7 @@ export default function Home() {
                     IG @hirenamakeup
                   </motion.a>
                 </div>
-                <div className="mt-8 pt-6 border-t border-white/10 sans text-[10px] tracking-[0.14em] uppercase text-white/30 flex flex-wrap gap-4 md:gap-6">
+                <div className="mt-8 pt-6 border-t border-white/10 sans text-[10px] tracking-[0.14em] uppercase text-white/30 flex flex-wrap gap-4 lg:gap-6">
                   <span>WA 0851 7976 3693</span>
                   <span className="hidden sm:inline">·</span>
                   <span>Bandung · Certified Since 2022</span>
@@ -1674,7 +1760,7 @@ export default function Home() {
               </Reveal>
             </div>
 
-            <div className="mt-16 md:mt-20 pt-8 border-t border-white/10 flex flex-col md:flex-row flex-wrap justify-between gap-3 sans text-[10px] tracking-[0.1em] uppercase text-white/30">
+            <div className="mt-12 lg:mt-20 pt-8 border-t border-white/10 flex flex-col lg:flex-row flex-wrap justify-between gap-3 sans text-[10px] tracking-[0.1em] uppercase text-white/30">
               <span>© 2026 Hirena Makeup · Bandung Soft Glam Specialist · Price List 2026</span>
               <span className="text-white/20">Crafted with detail · low visual, soft glam, timeless</span>
             </div>

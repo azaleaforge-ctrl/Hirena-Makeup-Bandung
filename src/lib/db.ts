@@ -581,6 +581,10 @@ export async function verifyPassword(password: string): Promise<boolean> {
 }
 
 // util for image resize to base64 ~800px
+// honey: thumb helper 600px for grid to reduce base64 payload vs 800px excess
+export function fileToThumbDataURL(file: File): Promise<string> {
+  return fileToResizedDataURL(file, 600);
+}
 export function fileToResizedDataURL(file: File, maxSize = 800): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

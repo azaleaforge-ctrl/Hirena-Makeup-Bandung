@@ -73,6 +73,11 @@ body {
   }
 }
 
+/* safe-area for bottom sheet + sticky */
+.pb-safe { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-nav-safe { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
 /* shimmer keyframes fallback (motion handles main) */
 @keyframes shimmer-sweep {
   0% { transform: translateX(-120%); }

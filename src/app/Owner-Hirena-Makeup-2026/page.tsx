@@ -632,113 +632,126 @@ export default function OwnerPage() {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 pb-[88px] md:pb-0">
-        <div className="sticky top-0 z-20 bg-[#FFFCFA]/95 backdrop-blur border-b border-[#EDE3DA] px-6 md:px-8 h-[64px] flex items-center justify-between">
-          <div>
-            <div className="serif text-[18px] md:text-[20px]">{tab === "portfolio" ? "Portfolio Galeri" : tab === "calendar" ? "Kelola Kalender" : "Pengaturan"}</div>
+      <div className="flex-1 min-w-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="sticky top-0 z-20 bg-[#FFFCFA]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[#FFFCFA]/90 border-b border-[#EDE3DA] px-4 md:px-8 h-14 md:h-[64px] flex items-center justify-between">
+          <div className="min-w-0">
+            <div className="serif text-[16px] md:text-[20px] leading-none truncate">{tab === "portfolio" ? "Portfolio Galeri" : tab === "calendar" ? "Kelola Kalender" : "Pengaturan"}</div>
             <div className="sans text-[11px] text-[#1A1A1A]/40 hidden md:block">
               {tab === "portfolio" ? "Kategori dan foto. Setiap simpan langsung terpublish otomatis." : tab === "calendar" ? "Klik tanggal untuk tambah atau edit booking. Batal merah, selesai hijau otomatis." : "Edit WA link dan catatan transport."}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <span className="hidden md:inline-flex sans text-[11px] tracking-[0.12em] uppercase bg-[#F6F1EB] border border-[#EDE3DA] px-3 py-1.5 rounded-full">Auto Publish Aktif</span>
-            <button onClick={handleLogout} className="md:hidden w-9 h-9 rounded-full border border-[#EDE3DA] bg-white flex items-center justify-center text-[12px]">⎋</button>
+            <span className="inline-flex md:hidden items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="sans text-[10px] tracking-[0.12em] uppercase text-emerald-700 font-medium">Live</span>
+            </span>
+            <button onClick={handleLogout} aria-label="Logout" className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border border-[#EDE3DA] bg-white flex items-center justify-center text-[13px] hover:bg-[#F6F1EB] transition active:scale-95">⎋</button>
           </div>
         </div>
 
-        <div className="px-4 md:px-8 py-6 md:py-8 max-w-[1100px]">
+        <div className="px-4 md:px-8 py-4 md:py-8 max-w-[1100px]">
           {tab === "portfolio" && (
             <div className="space-y-8">
               {/* kategori */}
-              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6">
+                <div className="flex items-center justify-between gap-3">
                   <h3 className="serif text-[16px]">Kategori Galeri</h3>
                   <span className="sans text-[10px] tracking-[0.12em] uppercase bg-[#F6F1EB] border border-[#EDE3DA] px-3 py-1 rounded-full">{categories.length} kategori</span>
                 </div>
                 <p className="sans text-[11px] text-[#1A1A1A]/50 mt-1">CRUD kategori: nama, urutan, hapus. Auto publish setiap perubahan.</p>
 
                 <div className="mt-4 flex gap-2">
-                  <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()} placeholder="Nama kategori baru, misal Natural Glam" className="flex-1 h-10 px-4 bg-[#FFFCFA] border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
-                  <button onClick={handleCreateCategory} className="h-10 px-6 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-black transition shrink-0">Tambah</button>
+                  <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()} placeholder="Nama kategori baru, misal Natural Glam" className="flex-1 h-12 px-4 bg-[#FFFCFA] border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
+                  <button onClick={handleCreateCategory} className="h-12 min-h-[44px] px-6 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-black transition shrink-0 active:scale-[0.98]">Tambah</button>
                 </div>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-3">
                   {categories.map((c, idx) => (
-                    <div key={c.id} className="flex items-center gap-2 bg-[#F6F1EB]/40 border border-[#EDE3DA] rounded-[12px] px-3 py-2">
-                      <span className="sans text-[11px] bg-white border border-[#EDE3DA] px-2 py-1 rounded-full">#{idx + 1}</span>
-                      {editingCatId === c.id ? (
-                        <>
-                          <input value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="flex-1 h-8 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]" />
-                          <button onClick={() => handleUpdateCategory(c.id)} className="h-8 px-3 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] rounded-[10px]">Simpan</button>
-                          <button onClick={() => setEditingCatId(null)} className="h-8 px-3 bg-white border border-[#EDE3DA] sans text-[11px] rounded-[10px]">Batal</button>
-                        </>
-                      ) : (
-                        <>
+                    <div key={c.id} className="flex flex-col md:flex-row md:items-center gap-2 bg-[#F6F1EB]/40 border border-[#EDE3DA] rounded-[16px] p-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="sans text-[11px] bg-white border border-[#EDE3DA] px-2 py-1 rounded-full shrink-0">#{idx + 1}</span>
+                        {editingCatId === c.id ? (
+                          <input value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="flex-1 h-11 min-h-[44px] px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
+                        ) : (
                           <div className="flex-1 min-w-0">
                             <div className="sans text-[13px] font-medium truncate">{c.name}</div>
                             <div className="sans text-[10px] text-[#1A1A1A]/40 truncate">{c.slug} · order {c.order}</div>
                           </div>
-                          <button onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name); }} className="h-8 px-3 bg-white border border-[#EDE3DA] sans text-[11px] rounded-[10px] hover:bg-[#F6F1EB]">Edit</button>
-                          <button onClick={() => handleReorderCategory(c.id, -1)} disabled={idx === 0} className="w-8 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[12px] hover:bg-[#F6F1EB] disabled:opacity-30">↑</button>
-                          <button onClick={() => handleReorderCategory(c.id, 1)} disabled={idx === categories.length - 1} className="w-8 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[12px] hover:bg-[#F6F1EB] disabled:opacity-30">↓</button>
-                          <button onClick={() => handleDeleteCategory(c.id)} className="h-8 px-3 bg-red-50 border border-red-200 text-red-600 sans text-[11px] rounded-[10px] hover:bg-red-100">Hapus</button>
-                        </>
+                        )}
+                      </div>
+                      {editingCatId === c.id ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleUpdateCategory(c.id)} className="flex-1 md:flex-none h-11 min-h-[44px] px-5 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.12em] uppercase font-medium rounded-[12px] active:scale-[0.98]">Simpan</button>
+                          <button onClick={() => setEditingCatId(null)} className="flex-1 md:flex-none h-11 min-h-[44px] px-5 bg-white border border-[#EDE3DA] sans text-[11px] rounded-[12px]">Batal</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                          <button onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name); }} className="flex-1 md:flex-none h-11 min-h-[44px] px-4 bg-white border border-[#EDE3DA] sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-[#F6F1EB] active:scale-[0.98]">Edit</button>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleReorderCategory(c.id, -1)} disabled={idx === 0} className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[13px] hover:bg-[#F6F1EB] disabled:opacity-30 flex items-center justify-center">↑</button>
+                            <button onClick={() => handleReorderCategory(c.id, 1)} disabled={idx === categories.length - 1} className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[13px] hover:bg-[#F6F1EB] disabled:opacity-30 flex items-center justify-center">↓</button>
+                          </div>
+                          <button onClick={() => handleDeleteCategory(c.id)} className="h-11 min-h-[44px] px-4 bg-red-50 border border-red-200 text-red-600 sans text-[11px] rounded-[12px] hover:bg-red-100 active:scale-[0.98]">Hapus</button>
+                        </div>
                       )}
                     </div>
                   ))}
-                  {categories.length === 0 && <div className="sans text-[12px] text-[#1A1A1A]/40 py-4 text-center">Belum ada kategori.</div>}
+                  {categories.length === 0 && <div className="sans text-[12px] text-[#1A1A1A]/40 py-6 text-center border border-dashed border-[#EDE3DA] rounded-[12px] bg-[#F6F1EB]/30">Belum ada kategori.</div>}
                 </div>
               </div>
 
               {/* tambah foto */}
-              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <h3 className="serif text-[16px]">Tambah Foto Galeri</h3>
-                  <span className="sans text-[10px] tracking-[0.12em] uppercase bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1 rounded-full">Featured untuk hero {featuredCount}/9</span>
+                  <span className="sans text-[10px] tracking-[0.12em] uppercase bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1 rounded-full w-fit">Featured untuk hero {featuredCount}/9</span>
                 </div>
                 <p className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Upload file otomatis resize 800px ke base64. Pilih kategori dan centang featured untuk sample hero.</p>
-                <div className="mt-4 grid md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Judul</label>
-                    <input value={newItemTitle} onChange={(e) => setNewItemTitle(e.target.value)} placeholder="Judul foto" className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
-                  </div>
-                  <div>
-                    <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Kategori</label>
-                    <select value={newItemCat} onChange={(e) => setNewItemCat(e.target.value)} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]">
-                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-3 md:contents">
+                    <div>
+                      <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Judul</label>
+                      <input value={newItemTitle} onChange={(e) => setNewItemTitle(e.target.value)} placeholder="Judul foto" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
+                    </div>
+                    <div>
+                      <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Kategori</label>
+                      <select value={newItemCat} onChange={(e) => setNewItemCat(e.target.value)} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]">
+                        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Deskripsi</label>
-                    <input value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} placeholder="Deskripsi singkat" className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]" />
+                    <input value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} placeholder="Deskripsi singkat" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={newItemFeatured} onChange={(e) => setNewItemFeatured(e.target.checked)} className="w-4 h-4 accent-[#C9A96E]" />
-                      <span className="sans text-[12px]">Featured untuk hero</span>
+                  <div className="flex items-center gap-3 py-1">
+                    <label className="flex items-center gap-2 cursor-pointer h-11">
+                      <input type="checkbox" checked={newItemFeatured} onChange={(e) => setNewItemFeatured(e.target.checked)} className="w-5 h-5 accent-[#C9A96E]" />
+                      <span className="sans text-[13px]">Featured untuk hero</span>
                     </label>
                   </div>
-                  <div className="flex gap-2 md:justify-end">
-                    <label className="flex-1 md:flex-none h-10 px-6 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase inline-flex items-center justify-center rounded-[12px] hover:bg-black cursor-pointer">
+                  <div className="grid grid-cols-1 md:flex gap-2 md:justify-end">
+                    <label className="w-full md:w-auto h-12 min-h-[44px] px-6 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase inline-flex items-center justify-center rounded-[12px] hover:bg-black cursor-pointer active:scale-[0.98]">
                       Pilih Foto
                       <input type="file" accept="image/*" multiple onChange={handleUploadNewItem} className="hidden" />
                     </label>
-                    <button onClick={handleSaveNewItemButton} className="h-10 px-6 border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-[#F6F1EB]">Simpan Tanpa Foto</button>
+                    <button onClick={handleSaveNewItemButton} className="w-full md:w-auto h-12 min-h-[44px] px-6 border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-[#F6F1EB] active:scale-[0.98]">Simpan Tanpa Foto</button>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={handleSimpanPublishPortfolio} className="flex-1 md:flex-none h-10 px-6 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.14em] uppercase rounded-[12px] hover:bg-[#b8975a] font-medium">Simpan dan Publish</button>
-                  <span className="sans text-[11px] text-[#1A1A1A]/40 self-center">Auto publish aktif, tombol untuk eksplisit.</span>
+                <div className="mt-4 flex flex-col md:flex-row gap-2">
+                  <button onClick={handleSimpanPublishPortfolio} className="w-full md:w-auto h-12 min-h-[44px] px-6 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.14em] uppercase rounded-[12px] hover:bg-[#b8975a] font-medium active:scale-[0.98]">Simpan dan Publish</button>
+                  <span className="sans text-[11px] text-[#1A1A1A]/40 self-center text-center md:text-left">Auto publish aktif, tombol untuk eksplisit.</span>
                 </div>
               </div>
 
               {/* filter + grid */}
-              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6">
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="serif text-[16px]">Galeri Foto ({filteredItems.length})</h3>
                   <div className="flex items-center gap-2">
-                    <span className="sans text-[11px] text-[#1A1A1A]/40">Filter</span>
-                    <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className="h-9 px-3 bg-[#F6F1EB] border border-[#EDE3DA] rounded-full sans text-[12px]">
+                    <span className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/40">Filter</span>
+                    <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className="h-11 min-h-[44px] px-4 bg-[#F6F1EB] border border-[#EDE3DA] rounded-full sans text-[13px]">
                       <option value="all">Semua kategori</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -748,50 +761,52 @@ export default function OwnerPage() {
                 {filteredItems.length === 0 ? (
                   <div className="mt-6 sans text-[13px] text-[#1A1A1A]/40 bg-[#F6F1EB] rounded-[16px] border border-dashed border-[#EDE3DA] p-10 text-center">Belum ada foto di kategori ini. Upload untuk memulai.</div>
                 ) : (
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredItems.slice().sort((a,b)=>a.order-b.order).map((p, idx) => {
                       const catName = categories.find((c)=>c.id===p.categoryId)?.name || p.categoryId;
                       const isEditing = editingItemId === p.id;
                       return (
                         <div key={p.id} className="bg-[#FFFCFA] rounded-[16px] border border-[#EDE3DA] overflow-hidden group">
-                          <div className="aspect-[3/4] bg-[#F6F1EB] relative overflow-hidden">
-                            {p.imageUrl.startsWith("gradient:") ? <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" /> : <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />}
+                          <div className="aspect-[4/3] md:aspect-[3/4] bg-[#F6F1EB] relative overflow-hidden">
+                            {p.imageUrl.startsWith("gradient:") ? <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" /> : <img src={p.imageUrl} alt={p.title} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 33vw" className="w-full h-full object-cover" />}
                             {p.imageUrl.startsWith("gradient:") && <div className="absolute inset-0 opacity-40" style={{ background: `radial-gradient(120% 80% at 30% 20%, #C9A96E 0%, transparent 60%)` }} />}
-                            <div className="absolute top-2 left-2 sans text-[10px] bg-white/90 backdrop-blur px-2 py-1 rounded-full border border-[#EDE3DA]">#{idx + 1}</div>
-                            {p.featured && <div className="absolute top-2 right-2 sans text-[10px] bg-[#C9A96E] text-white px-2 py-1 rounded-full">Featured</div>}
-                            <div className="absolute bottom-2 left-2 sans text-[10px] bg-[#1A1A1A] text-white px-2 py-1 rounded-full truncate max-w-[70%]">{catName}</div>
+                            <div className="absolute top-2 left-2 sans text-[10px] bg-white/90 backdrop-blur px-2.5 py-1 rounded-full border border-[#EDE3DA] font-medium">#{idx + 1}</div>
+                            {p.featured && <div className="absolute top-2 right-2 sans text-[10px] bg-[#C9A96E] text-white px-2.5 py-1 rounded-full font-medium">Featured</div>}
+                            <div className="absolute bottom-2 left-2 sans text-[10px] bg-[#1A1A1A] text-white px-2.5 py-1 rounded-full truncate max-w-[70%]">{catName}</div>
                           </div>
-                          <div className="p-3 space-y-2">
+                          <div className="p-3 md:p-3 space-y-3">
                             {isEditing ? (
                               <>
-                                <input value={editItemTitle} onChange={(e)=>setEditItemTitle(e.target.value)} placeholder="Judul" className="w-full sans text-[12px] px-3 h-9 border border-[#EDE3DA] rounded-[10px] focus:outline-none focus:border-[#C9A96E] bg-white" />
-                                <input value={editItemDesc} onChange={(e)=>setEditItemDesc(e.target.value)} placeholder="Deskripsi" className="w-full sans text-[12px] px-3 h-9 border border-[#EDE3DA] rounded-[10px] bg-white" />
-                                <select value={editItemCat} onChange={(e)=>setEditItemCat(e.target.value)} className="w-full h-9 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[12px]">
+                                <input value={editItemTitle} onChange={(e)=>setEditItemTitle(e.target.value)} placeholder="Judul" className="w-full sans text-[14px] px-4 h-11 min-h-[44px] border border-[#EDE3DA] rounded-[12px] focus:outline-none focus:border-[#C9A96E] bg-white" />
+                                <input value={editItemDesc} onChange={(e)=>setEditItemDesc(e.target.value)} placeholder="Deskripsi" className="w-full sans text-[14px] px-4 h-11 min-h-[44px] border border-[#EDE3DA] rounded-[12px] bg-white" />
+                                <select value={editItemCat} onChange={(e)=>setEditItemCat(e.target.value)} className="w-full h-11 min-h-[44px] px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]">
                                   {categories.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
-                                <label className="flex items-center gap-2">
-                                  <input type="checkbox" checked={editItemFeatured} onChange={(e)=>setEditItemFeatured(e.target.checked)} className="w-4 h-4 accent-[#C9A96E]" />
-                                  <span className="sans text-[11px]">Featured</span>
+                                <label className="flex items-center gap-2 h-11">
+                                  <input type="checkbox" checked={editItemFeatured} onChange={(e)=>setEditItemFeatured(e.target.checked)} className="w-5 h-5 accent-[#C9A96E]" />
+                                  <span className="sans text-[12px]">Featured</span>
                                 </label>
-                                <div className="flex gap-1.5">
-                                  <button onClick={()=>handleUpdateItem(p.id)} className="flex-1 h-8 rounded-[10px] bg-[#1A1A1A] text-white sans text-[11px]">Simpan</button>
-                                  <button onClick={()=>setEditingItemId(null)} className="flex-1 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[11px]">Batal</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button onClick={()=>handleUpdateItem(p.id)} className="h-11 min-h-[44px] rounded-[12px] bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase font-medium active:scale-[0.98]">Simpan</button>
+                                  <button onClick={()=>setEditingItemId(null)} className="h-11 min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.12em] uppercase active:scale-[0.98]">Batal</button>
                                 </div>
                               </>
                             ) : (
                               <>
-                                <div className="sans text-[12px] font-medium truncate">{p.title}</div>
-                                <div className="sans text-[11px] text-[#1A1A1A]/50 truncate">{p.description || "Tanpa deskripsi"}</div>
-                                <div className="flex gap-1.5">
-                                  <button onClick={()=>{setEditingItemId(p.id); setEditItemTitle(p.title); setEditItemDesc(p.description||""); setEditItemCat(p.categoryId); setEditItemFeatured(p.featured);}} className="flex-1 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[11px] hover:bg-[#F6F1EB]">Edit</button>
-                                  <button onClick={()=>handleToggleFeatured(p.id)} className={`flex-1 h-8 rounded-[10px] border sans text-[11px] ${p.featured?"bg-[#C9A96E] border-[#C9A96E] text-[#1A1A1A]":"bg-white border-[#EDE3DA] hover:bg-[#F6F1EB]"}`}>{p.featured?"Unfeat":"Feat"}</button>
+                                <div>
+                                  <div className="sans text-[13px] font-medium truncate">{p.title}</div>
+                                  <div className="sans text-[11px] text-[#1A1A1A]/50 truncate">{p.description || "Tanpa deskripsi"}</div>
                                 </div>
-                                <div className="flex gap-1.5">
-                                  <button onClick={()=>handleReorderItem(p.id,-1)} className="flex-1 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[11px] hover:bg-[#F6F1EB]">Up</button>
-                                  <button onClick={()=>handleReorderItem(p.id,1)} className="flex-1 h-8 rounded-[10px] border border-[#EDE3DA] bg-white sans text-[11px] hover:bg-[#F6F1EB]">Down</button>
-                                  <button onClick={()=>handleDeleteItem(p.id)} className="flex-1 h-8 rounded-[10px] bg-[#1A1A1A] text-white sans text-[11px] hover:bg-black">Hapus</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button onClick={()=>{setEditingItemId(p.id); setEditItemTitle(p.title); setEditItemDesc(p.description||""); setEditItemCat(p.categoryId); setEditItemFeatured(p.featured);}} className="h-11 min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.12em] uppercase font-medium hover:bg-[#F6F1EB] active:scale-[0.98]">Edit</button>
+                                  <button onClick={()=>handleToggleFeatured(p.id)} className={`h-11 min-h-[44px] rounded-[12px] border sans text-[11px] tracking-[0.12em] uppercase font-medium active:scale-[0.98] ${p.featured?"bg-[#C9A96E] border-[#C9A96E] text-[#1A1A1A]":"bg-white border-[#EDE3DA] hover:bg-[#F6F1EB]"}`}>{p.featured?"Unfeat":"Feat"}</button>
                                 </div>
-                                <label className="block text-center sans text-[11px] text-[#C9A96E] underline cursor-pointer">
+                                <div className="grid grid-cols-3 gap-2">
+                                  <button onClick={()=>handleReorderItem(p.id,-1)} className="h-11 min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[11px] hover:bg-[#F6F1EB] flex items-center justify-center gap-1 active:scale-[0.98]"><span>↑</span> <span className="hidden sm:inline">Up</span></button>
+                                  <button onClick={()=>handleReorderItem(p.id,1)} className="h-11 min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[11px] hover:bg-[#F6F1EB] flex items-center justify-center gap-1 active:scale-[0.98]"><span>↓</span> <span className="hidden sm:inline">Down</span></button>
+                                  <button onClick={()=>handleDeleteItem(p.id)} className="h-11 min-h-[44px] rounded-[12px] bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase hover:bg-black active:scale-[0.98]">Hapus</button>
+                                </div>
+                                <label className="flex items-center justify-center w-full h-11 min-h-[44px] rounded-[12px] border border-dashed border-[#EDE3DA] bg-[#F6F1EB]/40 sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/70 hover:bg-[#F6F1EB] cursor-pointer active:scale-[0.98]">
                                   Ganti gambar
                                   <input type="file" accept="image/*" onChange={(e)=>handleReplaceImage(p.id,e)} className="hidden" />
                                 </label>
@@ -811,22 +826,22 @@ export default function OwnerPage() {
             <div className="space-y-6">
               <BookingCalendar mode="admin" onSelectDate={onCalendarSelect} />
 
-              <div id="booking-form" className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6">
-                <div className="flex items-center justify-between mb-4">
+              <div id="booking-form" className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <h3 className="serif text-[16px]">Detail Tanggal</h3>
-                  <span className="sans text-[11px] tracking-[0.12em] uppercase bg-[#F6F1EB] border border-[#EDE3DA] px-3 py-1 rounded-full">{selectedDate || "Pilih tanggal di kalender"}</span>
+                  <span className="sans text-[11px] tracking-[0.12em] uppercase bg-[#F6F1EB] border border-[#EDE3DA] px-3 py-1.5 rounded-full shrink-0">{selectedDate || "Pilih tanggal"}</span>
                 </div>
                 {!selectedDate ? (
-                  <div className="sans text-[13px] text-[#1A1A1A]/40 py-6 text-center border border-dashed border-[#EDE3DA] rounded-[12px] bg-[#F6F1EB]/30">Klik salah satu tanggal di kalender untuk mengelola.</div>
+                  <div className="sans text-[13px] text-[#1A1A1A]/40 py-8 text-center border border-dashed border-[#EDE3DA] rounded-[12px] bg-[#F6F1EB]/30">Klik salah satu tanggal di kalender untuk mengelola.</div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     <div>
                       <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Tanggal</label>
-                      <input value={selectedDate} readOnly className="mt-1.5 w-full h-10 px-3 bg-[#F6F1EB] border border-[#EDE3DA] rounded-[10px] sans text-[13px]" />
+                      <input value={selectedDate} readOnly className="mt-1.5 w-full h-12 px-4 bg-[#F6F1EB] border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                     </div>
                     <div>
                       <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Status</label>
-                      <select value={formStatus} onChange={(e)=>setFormStatus(e.target.value as BookingStatus)} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]">
+                      <select value={formStatus} onChange={(e)=>setFormStatus(e.target.value as BookingStatus)} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]">
                         <option value="booked">Terisi (Booked)</option>
                         <option value="blocked">Blocked</option>
                         <option value="cancelled">Batal (Cancelled) - merah</option>
@@ -836,49 +851,50 @@ export default function OwnerPage() {
                     </div>
                     <div>
                       <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Client</label>
-                      <input value={formClient} onChange={(e)=>setFormClient(e.target.value)} placeholder="Nama client" disabled={formStatus==="blocked"} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px] disabled:bg-[#F6F1EB] disabled:text-[#1A1A1A]/40" />
+                      <input value={formClient} onChange={(e)=>setFormClient(e.target.value)} placeholder="Nama client" disabled={formStatus==="blocked"} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] disabled:bg-[#F6F1EB] disabled:text-[#1A1A1A]/40" />
                     </div>
                     <div>
                       <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Package</label>
-                      <select value={formPackage} onChange={(e)=>setFormPackage(e.target.value)} disabled={formStatus==="blocked"} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px] disabled:bg-[#F6F1EB]">
+                      <select value={formPackage} onChange={(e)=>setFormPackage(e.target.value)} disabled={formStatus==="blocked"} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] disabled:bg-[#F6F1EB]">
                         {PACKAGES.map((p)=><option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
                     <div className="md:col-span-2">
                       <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Catatan</label>
-                      <textarea value={formNotes} onChange={(e)=>setFormNotes(e.target.value)} placeholder="Catatan internal" rows={2} className="mt-1.5 w-full px-3 py-2.5 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px] resize-none" />
+                      <textarea value={formNotes} onChange={(e)=>setFormNotes(e.target.value)} placeholder="Catatan internal" rows={3} className="mt-1.5 w-full px-4 py-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] resize-none" />
                     </div>
-                    <div className="md:col-span-2 flex gap-2 pt-2 flex-wrap">
-                      <button onClick={handleSaveBooking} className="flex-1 md:flex-none bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase px-6 h-10 rounded-[10px] hover:bg-black transition">Simpan dan Publish</button>
-                      {editingId && <button onClick={handleDeleteBooking} className="sans text-[11px] tracking-[0.14em] uppercase border border-red-200 text-red-600 bg-white px-6 h-10 rounded-[10px] hover:bg-red-50 transition">Hapus Slot</button>}
-                      <button onClick={()=>{setSelectedDate(null); setEditingId(null);}} className="sans text-[11px] tracking-[0.14em] uppercase border border-[#EDE3DA] bg-white px-6 h-10 rounded-[10px] hover:bg-[#F6F1EB] transition">Batal</button>
+                    <div className="md:col-span-2 grid grid-cols-1 md:flex gap-2 pt-2">
+                      <button onClick={handleSaveBooking} className="w-full md:w-auto bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase px-6 h-12 min-h-[44px] rounded-[12px] hover:bg-black transition active:scale-[0.98]">Simpan dan Publish</button>
+                      {editingId && <button onClick={handleDeleteBooking} className="w-full md:w-auto sans text-[11px] tracking-[0.14em] uppercase border border-red-200 text-red-600 bg-white px-6 h-12 min-h-[44px] rounded-[12px] hover:bg-red-50 transition active:scale-[0.98]">Hapus Slot</button>}
+                      <button onClick={()=>{setSelectedDate(null); setEditingId(null);}} className="w-full md:w-auto sans text-[11px] tracking-[0.14em] uppercase border border-[#EDE3DA] bg-white px-6 h-12 min-h-[44px] rounded-[12px] hover:bg-[#F6F1EB] transition active:scale-[0.98]">Batal</button>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6">
-                <h3 className="sans text-[12px] font-medium tracking-[0.04em]">Bulk Block Tanggal</h3>
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6">
+                <h3 className="sans text-[13px] font-medium tracking-[0.04em]">Bulk Block Tanggal</h3>
                 <p className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Block rentang tanggal sekaligus, misal libur atau cuti.</p>
-                <div className="mt-4 grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
                   <div>
                     <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Dari</label>
-                    <input type="date" value={bulkStart} onChange={(e)=>setBulkStart(e.target.value)} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]" />
+                    <input type="date" value={bulkStart} onChange={(e)=>setBulkStart(e.target.value)} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                   </div>
                   <div>
                     <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Sampai</label>
-                    <input type="date" value={bulkEnd} onChange={(e)=>setBulkEnd(e.target.value)} className="mt-1.5 w-full h-10 px-3 bg-white border border-[#EDE3DA] rounded-[10px] sans text-[13px]" />
+                    <input type="date" value={bulkEnd} onChange={(e)=>setBulkEnd(e.target.value)} className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                   </div>
-                  <button onClick={handleBulkBlock} className="h-10 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.14em] uppercase px-6 rounded-[10px] hover:bg-[#b8975a] transition font-medium">Block Rentang</button>
+                  <button onClick={handleBulkBlock} className="w-full md:w-auto h-12 min-h-[44px] bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.14em] uppercase px-6 rounded-[12px] hover:bg-[#b8975a] transition font-medium active:scale-[0.98]">Block Rentang</button>
                 </div>
               </div>
 
               <div className="bg-white rounded-[16px] border border-[#EDE3DA] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#EDE3DA] flex items-center justify-between">
-                  <h3 className="sans text-[12px] font-medium">Daftar Booking ({bookings.length})</h3>
-                  <span className="sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/40">Hijau selesai, merah batal</span>
+                <div className="px-4 md:px-5 py-4 border-b border-[#EDE3DA] flex items-center justify-between gap-3">
+                  <h3 className="sans text-[13px] font-medium">Daftar Booking ({bookings.length})</h3>
+                  <span className="sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/40 hidden md:inline">Hijau selesai, merah batal</span>
                 </div>
-                <div className="overflow-x-auto">
+                {/* desktop table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full sans text-[12px]">
                     <thead className="bg-[#F6F1EB]/60">
                       <tr className="text-left text-[#1A1A1A]/50">
@@ -902,10 +918,10 @@ export default function OwnerPage() {
                             <td className="px-4 py-3">{b.client||"-"}</td>
                             <td className="px-4 py-3">{b.package||"-"}</td>
                             <td className="px-4 py-3">
-                              <div className="flex gap-1.5 flex-wrap">
-                                <button onClick={()=>onCalendarSelect(b.date, b)} className="px-3 h-7 rounded-full border border-[#EDE3DA] bg-white hover:bg-[#F6F1EB] sans text-[11px]">Edit</button>
-                                {b.status!=="cancelled" && b.displayStatus!=="completed" && <button onClick={()=>handleCancelBookingRow(b.id)} className="px-3 h-7 rounded-full bg-red-500 text-white sans text-[11px] hover:bg-red-600">Batal</button>}
-                                <button onClick={async()=>{await deleteBooking(b.id); broadcastUpdate("bookings"); const updated=await getBookingsWithDisplayStatus(); setBookings(updated); showToast("Dihapus");}} className="px-3 h-7 rounded-full bg-[#1A1A1A] text-white sans text-[11px] hover:bg-black">Hapus</button>
+                              <div className="flex gap-2 flex-wrap">
+                                <button onClick={()=>onCalendarSelect(b.date, b)} className="px-4 h-11 min-h-[44px] rounded-full border border-[#EDE3DA] bg-white hover:bg-[#F6F1EB] sans text-[12px]">Edit</button>
+                                {b.status!=="cancelled" && b.displayStatus!=="completed" && <button onClick={()=>handleCancelBookingRow(b.id)} className="px-4 h-11 min-h-[44px] rounded-full bg-red-500 text-white sans text-[12px] hover:bg-red-600">Batal</button>}
+                                <button onClick={async()=>{await deleteBooking(b.id); broadcastUpdate("bookings"); const updated=await getBookingsWithDisplayStatus(); setBookings(updated); showToast("Dihapus");}} className="px-4 h-11 min-h-[44px] rounded-full bg-[#1A1A1A] text-white sans text-[12px] hover:bg-black">Hapus</button>
                               </div>
                             </td>
                           </tr>
@@ -914,33 +930,65 @@ export default function OwnerPage() {
                     </tbody>
                   </table>
                 </div>
+                {/* mobile cards */}
+                <div className="md:hidden p-3">
+                  {bookings.length===0 ? (
+                    <div className="sans text-[13px] text-[#1A1A1A]/40 bg-[#F6F1EB] rounded-[16px] border border-dashed border-[#EDE3DA] p-8 text-center">Belum ada booking.</div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3">
+                      {bookings.slice().sort((a,b)=>a.date.localeCompare(b.date)).map((b)=> (
+                        <div key={b.id} className="bg-[#FFFCFA] rounded-[16px] border border-[#EDE3DA] p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="sans text-[13px] font-medium">{b.date}</span>
+                            <span className={`inline-flex px-3 py-1 rounded-full text-[10px] tracking-[0.12em] uppercase border font-medium ${b.displayStatus==="cancelled"?"bg-red-50 text-red-700 border-red-200":b.displayStatus==="completed"?"bg-emerald-500 text-white border-emerald-500":b.displayStatus==="blocked"?"bg-[#EDE3DA] text-[#1A1A1A] border-[#EDE3DA]":b.displayStatus==="booked"?"bg-white border-[#C9A96E] text-[#1A1A1A]":"bg-white border-[#EDE3DA]"}`}>{b.displayStatus}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="sans text-[12px] font-medium truncate">{b.client || "Tanpa nama"}</div>
+                              <div className="sans text-[11px] text-[#1A1A1A]/50">{b.package || "-"} · <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] tracking-[0.06em] uppercase border ${b.status==="cancelled"?"bg-red-500 text-white border-red-500":b.status==="blocked"?"bg-[#1A1A1A] text-white border-[#1A1A1A]":b.status==="booked"?"bg-[#C9A96E] text-white border-[#C9A96E]":"bg-white border-[#EDE3DA]"}`}>{b.status}</span></div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button onClick={()=>onCalendarSelect(b.date, b)} className="h-11 min-h-[44px] rounded-[12px] border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.12em] uppercase font-medium hover:bg-[#F6F1EB] active:scale-[0.98]">Edit</button>
+                            {b.status!=="cancelled" && b.displayStatus!=="completed" ? (
+                              <button onClick={()=>handleCancelBookingRow(b.id)} className="h-11 min-h-[44px] rounded-[12px] bg-red-500 text-white sans text-[11px] tracking-[0.12em] uppercase font-medium hover:bg-red-600 active:scale-[0.98]">Batal</button>
+                            ) : (
+                              <span className="h-11 min-h-[44px] rounded-[12px] bg-[#F6F1EB] border border-[#EDE3DA] flex items-center justify-center sans text-[11px] text-[#1A1A1A]/30">Batal</span>
+                            )}
+                            <button onClick={async()=>{await deleteBooking(b.id); broadcastUpdate("bookings"); const updated=await getBookingsWithDisplayStatus(); setBookings(updated); showToast("Dihapus");}} className="h-11 min-h-[44px] rounded-[12px] bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase hover:bg-black active:scale-[0.98]">Hapus</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {tab === "settings" && (
             <div className="space-y-6 max-w-[640px]">
-              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-5 md:p-6 space-y-5">
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6 space-y-5">
                 <div>
                   <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">WA Link</label>
-                  <input value={waLink} onChange={(e)=>setWaLink(e.target.value)} placeholder="https://wa.me/..." className="mt-1.5 w-full h-11 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
+                  <input value={waLink} onChange={(e)=>setWaLink(e.target.value)} placeholder="https://wa.me/..." className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
                   <div className="sans text-[11px] text-[#1A1A1A]/40 mt-1.5">Link yang dipakai tombol Book via WA di landing.</div>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div>
                     <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Harga Basic</label>
-                    <input value={priceBasic} onChange={(e)=>setPriceBasic(e.target.value)} placeholder="350K" className="mt-1.5 w-full h-11 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px]" />
+                    <input value={priceBasic} onChange={(e)=>setPriceBasic(e.target.value)} placeholder="350K" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                   </div>
                   <div>
                     <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Harga Premium</label>
-                    <input value={pricePremium} onChange={(e)=>setPricePremium(e.target.value)} placeholder="550K" className="mt-1.5 w-full h-11 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px]" />
+                    <input value={pricePremium} onChange={(e)=>setPricePremium(e.target.value)} placeholder="550K" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
                   </div>
                 </div>
                 <div>
                   <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Catatan Transport</label>
-                  <textarea value={transportNote} onChange={(e)=>setTransportNote(e.target.value)} rows={3} placeholder="Info transport" className="mt-1.5 w-full px-4 py-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] resize-none focus:outline-none focus:border-[#C9A96E]" />
+                  <textarea value={transportNote} onChange={(e)=>setTransportNote(e.target.value)} rows={3} placeholder="Info transport" className="mt-1.5 w-full px-4 py-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] resize-none focus:outline-none focus:border-[#C9A96E]" />
                 </div>
-                <button onClick={handleSaveSettings} className="bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase px-6 h-11 rounded-[12px] hover:bg-black transition">Simpan dan Publish</button>
+                <button onClick={handleSaveSettings} className="w-full md:w-auto bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase px-6 h-12 min-h-[44px] rounded-[12px] hover:bg-black transition active:scale-[0.98]">Simpan dan Publish</button>
               </div>
               <div className="bg-[#F6F1EB] border border-[#EDE3DA] rounded-[16px] p-5">
                 <div className="sans text-[12px] font-medium">Info Penyimpanan</div>
@@ -952,18 +1000,50 @@ export default function OwnerPage() {
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#1A1A1A] border-t border-white/10 px-2 py-2">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#FFFCFA]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[#FFFCFA]/90 border-t border-[#EDE3DA] px-2 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
         <div className="grid grid-cols-3 gap-2">
-          {[{id:"portfolio",label:"Galeri"},{id:"calendar",label:"Kalender"},{id:"settings",label:"Setting"}].map((it)=>(
-            <button key={it.id} onClick={()=>setTab(it.id as Tab)} className={`h-[56px] rounded-[14px] flex flex-col items-center justify-center gap-1 transition ${tab===it.id?"bg-[#C9A96E] text-[#1A1A1A]":"text-white/60"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${tab===it.id?"bg-[#1A1A1A]":"bg-white/20"}`} />
-              <span className="sans text-[11px] tracking-[0.12em] uppercase font-medium">{it.label}</span>
+          {[
+            {
+              id: "portfolio",
+              label: "Galeri",
+              icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M3 15l5-5 4 4 3-3 6 6" />
+                  <circle cx="9" cy="8" r="1.6" />
+                </svg>
+              ),
+            },
+            {
+              id: "calendar",
+              label: "Kalender",
+              icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="17" rx="2" />
+                  <path d="M16 2v4M8 2v4M3 9h18" />
+                </svg>
+              ),
+            },
+            {
+              id: "settings",
+              label: "Setting",
+              icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a1 1 0 1 1-1.4 1.4l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.6v.2a1 1 0 1 1-2 0v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a1 1 0 1 1-1.4-1.4l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.6-1h-.2a1 1 0 1 1 0-2h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a1 1 0 1 1 1.4-1.4l.1.1a1.7 1.7 0 0 0 1.9.4h.1a1.7 1.7 0 0 0 1-1.6v-.2a1 1 0 1 1 2 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.4l.1-.1a1 1 0 1 1 1.4 1.4l-.1.1a1.7 1.7 0 0 0-.4 1.9v.1a1.7 1.7 0 0 0 1.6 1h.2a1 1 0 1 1 0 2h-.2a1.7 1.7 0 0 0-1.6 1z" />
+                </svg>
+              ),
+            },
+          ].map((it) => (
+            <button key={it.id} onClick={() => setTab(it.id as Tab)} className={`h-14 min-h-[56px] rounded-[16px] flex flex-col items-center justify-center gap-1 transition active:scale-[0.98] ${tab === it.id ? "bg-[#C9A96E] text-[#1A1A1A] shadow-[0_4px_12px_rgba(201,169,110,0.3)]" : "text-[#1A1A1A]/50 hover:bg-[#F6F1EB] hover:text-[#1A1A1A]"}`}>
+              <span className={`w-5 h-5 flex items-center justify-center rounded-full ${tab === it.id ? "bg-[#1A1A1A] text-[#C9A96E]" : "bg-[#1A1A1A]/5 text-[#1A1A1A]/70"}`}>{it.icon}</span>
+              <span className="sans text-[10px] tracking-[0.12em] uppercase font-medium">{it.label}</span>
             </button>
           ))}
         </div>
-      </div>
+      </nav>
 
-      {toast && <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1A1A1A] text-white sans text-[12px] px-5 py-3 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.2)] border border-white/10">{toast}</div>}
+      {toast && <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1A1A1A] text-white sans text-[13px] px-6 py-3.5 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.2)] border border-white/10 whitespace-nowrap mb-[env(safe-area-inset-bottom)]">{toast}</div>}
     </div>
   );
 }

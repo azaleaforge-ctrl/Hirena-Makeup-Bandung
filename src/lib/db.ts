@@ -103,8 +103,19 @@ const DB_VERSION = 2;
 
 export const HIRENA_CHANNEL = "hirena-sync";
 const HIRENA_STORAGE_KEY = "hirena_update_at";
+export const HIRENA_GLOBAL_VERSION_KEY = "hirena_global_version";
 
 export type HirenaUpdateType = "portfolio" | "bookings" | "settings" | "prices";
+
+export type HirenaGlobalState = {
+  version: number;
+  updatedAt: string | null;
+  lastType?: string;
+  categories: PortfolioCategory[];
+  items: PortfolioItem[];
+  bookings: Booking[];
+  settings: Settings | null;
+};
 
 export function broadcastUpdate(type: HirenaUpdateType, payload?: unknown): void {
   void payload;
@@ -117,6 +128,146 @@ export function broadcastUpdate(type: HirenaUpdateType, payload?: unknown): void
   try {
     if (typeof window !== "undefined") localStorage.setItem(HIRENA_STORAGE_KEY, String(Date.now()));
   } catch {}
+  void pushGlobalState(type).catch(() => {});
+}
+
+export function getGlobalVersion(): number {
+  try {
+    if (typeof window === "undefined") return 0;
+    const v = localStorage.getItem(HIRENA_GLOBAL_VERSION_KEY);
+    const n = v ? parseInt(v, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setGlobalVersion(v: number): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(HIRENA_GLOBAL_VERSION_KEY, String(v));
+  } catch {}
+}
+
+export async function fetchGlobalState(): Promise<HirenaGlobalState | null> {
+  try {
+    const res = await fetch("/api/hirena", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as HirenaGlobalState;
+    if (typeof data.version !== "number") return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function pushGlobalState(
+  type: HirenaUpdateType,
+  opts?: { categories?: PortfolioCategory[]; items?: PortfolioItem[]; bookings?: Booking[]; settings?: Settings }
+): Promise<void> {
+  try {
+    let categories = opts?.categories;
+    let items = opts?.items;
+    let bookings = opts?.bookings;
+    let settings = opts?.settings;
+    if (categories === undefined || items === undefined || bookings === undefined || settings === undefined) {
+      try {
+        const db = await getDb();
+        if (categories === undefined) {
+          try {
+            categories = await db.getAll("portfolioCategories");
+          } catch {
+            categories = undefined;
+          }
+        }
+        if (items === undefined) {
+          try {
+            items = await db.getAll("portfolioItems");
+          } catch {
+            items = undefined;
+          }
+        }
+        if (bookings === undefined) {
+          try {
+            bookings = await db.getAll("bookings");
+          } catch {
+            bookings = undefined;
+          }
+        }
+        if (settings === undefined) {
+          try {
+            const s = await db.get("settings", "main");
+            settings = s ?? undefined;
+          } catch {
+            settings = undefined;
+          }
+        }
+      } catch {}
+    }
+    const payload: Record<string, unknown> = { type };
+    if (categories !== undefined) payload.categories = categories;
+    if (items !== undefined) payload.items = items;
+    if (bookings !== undefined) payload.bookings = bookings;
+    if (settings !== undefined) payload.settings = settings;
+    await fetch("/api/hirena", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {}
+}
+
+export async function pullGlobalStateAndMerge(): Promise<boolean> {
+  try {
+    const state = await fetchGlobalState();
+    if (!state || state.version === 0) return false;
+    const localVersion = getGlobalVersion();
+    const db = await getDb();
+    let didMerge = false;
+    if (Array.isArray(state.categories) && state.categories.length > 0) {
+      const tx = db.transaction("portfolioCategories", "readwrite");
+      await tx.store.clear();
+      for (const c of state.categories) await tx.store.put(c as PortfolioCategory);
+      await tx.done;
+      didMerge = true;
+    }
+    if (Array.isArray(state.items) && state.items.length > 0) {
+      const tx = db.transaction("portfolioItems", "readwrite");
+      await tx.store.clear();
+      for (const it of state.items) await tx.store.put(it as PortfolioItem);
+      await tx.done;
+      didMerge = true;
+    }
+    if (Array.isArray(state.bookings) && state.bookings.length > 0) {
+      const tx = db.transaction("bookings", "readwrite");
+      await tx.store.clear();
+      for (const b of state.bookings) await tx.store.put(b as Booking);
+      await tx.done;
+      didMerge = true;
+    }
+    if (state.settings !== null && state.settings !== undefined) {
+      const tx = db.transaction("settings", "readwrite");
+      await tx.store.put(state.settings as Settings);
+      await tx.done;
+      didMerge = true;
+    }
+    if (didMerge || state.version > localVersion) {
+      setGlobalVersion(state.version);
+    }
+    if (didMerge) {
+      try {
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("hirena:update", { detail: { type: state.lastType || "portfolio" } }));
+      } catch {}
+      return true;
+    }
+    if (state.version > localVersion) {
+      setGlobalVersion(state.version);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<HirenaDB>> | null = null;

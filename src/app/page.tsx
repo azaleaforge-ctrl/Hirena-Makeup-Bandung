@@ -489,6 +489,7 @@ export default function Home() {
 
   const [showUpdate, setShowUpdate] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [pendingReload, setPendingReload] = useState(false);
   const hasMountedRef = useRef(false);
   const showRef = useRef(false);
 
@@ -527,11 +528,12 @@ export default function Home() {
   useHirenaSync("settings", fetchPricesAndWa, 15000);
   useHirenaSync("prices", fetchPricesAndWa, 15000);
 
-  // popup realtime listeners
+  // popup realtime listeners - reload tetap jalan meski di-dismiss (pendingReload decoupled dari visibility)
   const triggerUpdate = useCallback(() => {
     if (!hasMountedRef.current) return;
     if (showRef.current) return;
     showRef.current = true;
+    setPendingReload(true);
     setShowUpdate(true);
     setCountdown(5);
   }, []);
@@ -547,7 +549,7 @@ export default function Home() {
   useHirenaSync(triggerUpdate, 15000);
 
   useEffect(() => {
-    if (!showUpdate) return;
+    if (!pendingReload) return;
     const iv = window.setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -559,12 +561,11 @@ export default function Home() {
       });
     }, 1000);
     return () => window.clearInterval(iv);
-  }, [showUpdate]);
+  }, [pendingReload]);
 
   const handleDismiss = useCallback(() => {
+    // hanya sembunyikan popup, reload tetap jalan (pendingReload tetap true)
     setShowUpdate(false);
-    showRef.current = false;
-    setCountdown(5);
   }, []);
 
   const galleryItems = galleryFilter === "all" ? items : items.filter((it) => it.categoryId === galleryFilter);

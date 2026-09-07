@@ -10,8 +10,9 @@ export default function UpdatePopup({
 }: {
   show: boolean;
   countdown: number;
-  onDismiss: () => void;
+  onDismiss?: () => void;
 }) {
+  void onDismiss;
   return (
     <AnimatePresence>
       {show && (
@@ -35,14 +36,8 @@ export default function UpdatePopup({
               <div className="flex-1 min-w-0">
                 <div className="sans text-[11px] tracking-[0.14em] uppercase text-[#C9A96E] font-medium">Pembaruan tersedia</div>
                 <div className="serif text-[15px] leading-[1.4] mt-1">Web akan refresh dalam {countdown} detik</div>
-                <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Konten terbaru dari dashboard sudah siap.</div>
+                <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Konten terbaru dari dashboard sudah siap. Refresh otomatis.</div>
               </div>
-              <button
-                onClick={onDismiss}
-                className="shrink-0 sans text-[11px] tracking-[0.12em] uppercase border border-[#EDE3DA] bg-white hover:bg-[#F6F1EB] px-3 h-8 rounded-full transition"
-              >
-                Dismiss
-              </button>
             </div>
             <div className="h-[3px] bg-[#F6F1EB] w-full overflow-hidden">
               <motion.div

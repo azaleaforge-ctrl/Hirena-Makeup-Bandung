@@ -22,11 +22,18 @@ import {
   saveSettings,
   broadcastUpdate,
   getBookingDisplayStatus,
+  normalizeWaNumber,
+  extractWaNumberFromLink,
+  getDefaultPrices,
+  getPrices,
+  savePrices,
   type Booking,
   type BookingStatus,
   type Settings,
   type PortfolioCategory,
   type PortfolioItem,
+  type Prices,
+  type PriceItem,
 } from "@/lib/db";
 
 const PACKAGES = ["BASIC", "PREMIUM", "SAPPHIRE", "PEARL", "HARMONIA", "AURORA"];
@@ -54,7 +61,7 @@ function setSession(token: string) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ token, expiry }));
 }
 
-type Tab = "portfolio" | "calendar" | "settings";
+type Tab = "portfolio" | "calendar" | "prices" | "settings";
 
 export default function OwnerPage() {
   const [authExists, setAuthExists] = useState<boolean | null>(null);
@@ -83,10 +90,16 @@ export default function OwnerPage() {
   const [bulkEnd, setBulkEnd] = useState("");
 
   // settings form
-  const [waLink, setWaLink] = useState("");
+  const [waNumber, setWaNumber] = useState("");
   const [transportNote, setTransportNote] = useState("");
   const [priceBasic, setPriceBasic] = useState("");
   const [pricePremium, setPricePremium] = useState("");
+
+  // prices (Daftar Harga)
+  const [prices, setPrices] = useState<Prices>(getDefaultPrices());
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [editingBasicId, setEditingBasicId] = useState<string | null>(null);
+  const [editingPremiumId, setEditingPremiumId] = useState<string | null>(null);
 
   // portfolio kategori form
   const [newCatName, setNewCatName] = useState("");
@@ -112,12 +125,17 @@ export default function OwnerPage() {
 
   async function refreshAll() {
     try {
-      const [cats, its, bks, s] = await Promise.all([getCategories(), getPortfolioItems(), getBookingsWithDisplayStatus(), getSettings()]);
+      const [cats, its, bks, s, p] = await Promise.all([getCategories(), getPortfolioItems(), getBookingsWithDisplayStatus(), getSettings(), getPrices()]);
       setCategories(cats);
       setItems(its);
       setBookings(bks);
       setSettingsState(s);
-      setWaLink(s.waLink || "");
+      // migrate waLink -> waNumber
+      let num = s.waNumber || "";
+      if (!num && s.waLink) num = extractWaNumberFromLink(s.waLink) || "";
+      num = normalizeWaNumber(num);
+      setWaNumber(num || "6285179763693");
+      setPrices(p);
       setTransportNote(s.transportNote || "");
       setPriceBasic(s.priceBasic || "");
       setPricePremium(s.pricePremium || "");
@@ -535,17 +553,64 @@ export default function OwnerPage() {
 
   async function handleSaveSettings() {
     if (!settings) return;
+    const normalized = normalizeWaNumber(waNumber.trim());
+    if (!normalized || normalized.length < 10 || normalized.length > 15) {
+      showToast("Nomor WA tidak valid (10 to 15 digit, diawali 62)");
+      return;
+    }
     const next: Settings = {
       ...settings,
-      waLink: waLink.trim(),
+      waNumber: normalized,
+      waLink: `https://wa.me/${normalized}?text=${encodeURIComponent("Halo Hirena Makeup saya mau tanya slot makeup")}`,
       transportNote: transportNote.trim(),
       priceBasic: priceBasic.trim(),
       pricePremium: pricePremium.trim(),
     };
     await saveSettings(next);
     setSettingsState(next);
+    setWaNumber(normalized);
     broadcastUpdate("settings");
+    broadcastUpdate("prices");
     showToast("Pengaturan disimpan dan terpublish");
+  }
+
+  // Daftar Harga helpers
+  function updateBasicItems(next: PriceItem[]) {
+    setPrices((p) => ({ ...p, basic: next }));
+  }
+  function updatePremiumItems(next: PriceItem[]) {
+    setPrices((p) => ({ ...p, premium: next }));
+  }
+  async function handleSavePrices() {
+    if (prices.basic.some((x) => !x.name.trim() || !x.price.trim())) {
+      setPriceError("Nama dan harga wajib diisi untuk semua item Basic");
+      return;
+    }
+    if (prices.premium.some((x) => !x.name.trim() || !x.price.trim())) {
+      setPriceError("Nama dan harga wajib diisi untuk semua item Premium");
+      return;
+    }
+    setPriceError(null);
+    await savePrices(prices);
+    broadcastUpdate("prices");
+    broadcastUpdate("settings");
+    showToast("Daftar harga disimpan dan terpublish");
+  }
+  function addBasicItem() {
+    const id = generateId();
+    updateBasicItems([...prices.basic, { id, name: "", price: "", note: "" }]);
+    setEditingBasicId(id);
+  }
+  function addPremiumItem() {
+    const id = generateId();
+    updatePremiumItems([...prices.premium, { id, name: "", price: "", note: "" }]);
+    setEditingPremiumId(id);
+  }
+  function removeBasicItem(id: string) {
+    updateBasicItems(prices.basic.filter((x) => x.id !== id));
+  }
+  function removePremiumItem(id: string) {
+    updatePremiumItems(prices.premium.filter((x) => x.id !== id));
   }
 
   if (checking) {
@@ -615,6 +680,7 @@ export default function OwnerPage() {
           {[
             { id: "portfolio", label: "Portfolio Galeri", desc: `${categories.length} kategori · ${items.length} foto` },
             { id: "calendar", label: "Kalender", desc: `${bookings.length} booking` },
+            { id: "prices", label: "Daftar Harga", desc: `${prices.basic.length + prices.premium.length} item harga` },
             { id: "settings", label: "Pengaturan", desc: "WA and Info" },
           ].map((it) => (
             <button key={it.id} onClick={() => setTab(it.id as Tab)} className={`w-full text-left px-4 py-3 rounded-[12px] flex items-center justify-between transition ${tab === it.id ? "bg-[#C9A96E] text-[#1A1A1A]" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
@@ -635,9 +701,9 @@ export default function OwnerPage() {
       <div className="flex-1 min-w-0 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-0">
         <div className="sticky top-0 z-20 bg-[#FFFCFA]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[#FFFCFA]/90 border-b border-[#EDE3DA] px-4 md:px-8 h-14 md:h-[64px] flex items-center justify-between">
           <div className="min-w-0">
-            <div className="serif text-[16px] md:text-[20px] leading-none truncate">{tab === "portfolio" ? "Portfolio Galeri" : tab === "calendar" ? "Kelola Kalender" : "Pengaturan"}</div>
+            <div className="serif text-[16px] md:text-[20px] leading-none truncate">{tab === "portfolio" ? "Portfolio Galeri" : tab === "calendar" ? "Kelola Kalender" : tab === "prices" ? "Daftar Harga" : "Pengaturan"}</div>
             <div className="sans text-[11px] text-[#1A1A1A]/40 hidden md:block">
-              {tab === "portfolio" ? "Kategori dan foto. Setiap simpan langsung terpublish otomatis." : tab === "calendar" ? "Klik tanggal untuk tambah atau edit booking. Batal merah, selesai hijau otomatis." : "Edit WA link dan catatan transport."}
+              {tab === "portfolio" ? "Kategori dan foto. Setiap simpan langsung terpublish otomatis." : tab === "calendar" ? "Klik tanggal untuk tambah atau edit booking. Batal merah, selesai hijau otomatis." : tab === "prices" ? "Kelola harga Basic and Premium. Kosong akan sembunyi di landing." : "Edit Nomor WA dan catatan transport."}
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
@@ -966,13 +1032,100 @@ export default function OwnerPage() {
             </div>
           )}
 
+          {tab === "prices" && (
+            <div className="space-y-6 max-w-[720px]">
+              <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6 space-y-6">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="serif text-[16px]">Daftar Harga Reguler · BASIC</h3>
+                  <button onClick={addBasicItem} className="h-10 min-h-[40px] px-4 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.12em] uppercase rounded-[12px] hover:bg-black active:scale-[0.98]">Tambah Item</button>
+                </div>
+                {prices.basic.length === 0 ? (
+                  <div className="sans text-[12px] text-[#1A1A1A]/40 py-8 text-center border border-dashed border-[#EDE3DA] rounded-[12px] bg-[#F6F1EB]/30">Belum ada harga Basic. Tambah item untuk tampil di landing. Jika kosong, card akan disembunyikan.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {prices.basic.map((it) => (
+                      <div key={it.id} className="bg-[#F6F1EB]/40 border border-[#EDE3DA] rounded-[16px] p-3 md:p-4 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_0.6fr] gap-3">
+                          <div>
+                            <label className="sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/50">Nama Paket</label>
+                            <input value={it.name} onChange={(e)=>updateBasicItems(prices.basic.map(x=>x.id===it.id?{...x,name:e.target.value}:x))} placeholder="Make Up Only" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
+                          </div>
+                          <div>
+                            <label className="sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/50">Harga</label>
+                            <input value={it.price} onChange={(e)=>updateBasicItems(prices.basic.map(x=>x.id===it.id?{...x,price:e.target.value}:x))} placeholder="350K" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/50">Catatan / Deskripsi</label>
+                          <input value={it.note||""} onChange={(e)=>updateBasicItems(prices.basic.map(x=>x.id===it.id?{...x,note:e.target.value}:x))} placeholder="1.5 to 2 jam tanpa retouch" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px]" />
+                        </div>
+                        <div className="flex justify-end">
+                          <button onClick={()=>removeBasicItem(it.id)} className="h-9 px-4 bg-red-50 border border-red-200 text-red-600 sans text-[11px] rounded-[12px] hover:bg-red-100 active:scale-[0.98]">Hapus</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div>
+                  <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Catatan bawah card BASIC</label>
+                  <textarea value={prices.basicNote} onChange={(e)=>setPrices(p=>({...p,basicNote:e.target.value}))} rows={2} placeholder="Harga belum termasuk transport..." className="mt-1.5 w-full px-4 py-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] resize-none focus:outline-none focus:border-[#C9A96E]" />
+                </div>
+              </div>
+
+              <div className="bg-[#1A1A1A] rounded-[16px] border border-[#1A1A1A] p-4 md:p-6 space-y-6">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="serif text-[16px] text-white">Daftar Harga Reguler · PREMIUM</h3>
+                  <button onClick={addPremiumItem} className="h-10 min-h-[40px] px-4 bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.12em] uppercase font-medium rounded-[12px] hover:bg-[#b8975a] active:scale-[0.98]">Tambah Item</button>
+                </div>
+                {prices.premium.length === 0 ? (
+                  <div className="sans text-[12px] text-white/50 py-8 text-center border border-dashed border-white/15 rounded-[12px] bg-white/5">Belum ada harga Premium. Jika kosong, card akan disembunyikan di landing.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {prices.premium.map((it)=> (
+                      <div key={it.id} className="bg-white/5 border border-white/10 rounded-[16px] p-3 md:p-4 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_0.6fr] gap-3">
+                          <div>
+                            <label className="sans text-[10px] tracking-[0.12em] uppercase text-white/50">Nama Paket</label>
+                            <input value={it.name} onChange={(e)=>updatePremiumItems(prices.premium.map(x=>x.id===it.id?{...x,name:e.target.value}:x))} placeholder="Make Up Only" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
+                          </div>
+                          <div>
+                            <label className="sans text-[10px] tracking-[0.12em] uppercase text-white/50">Harga</label>
+                            <input value={it.price} onChange={(e)=>updatePremiumItems(prices.premium.map(x=>x.id===it.id?{...x,price:e.target.value}:x))} placeholder="550K" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px] focus:outline-none focus:border-[#C9A96E]" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="sans text-[10px] tracking-[0.12em] uppercase text-white/50">Catatan / Deskripsi</label>
+                          <input value={it.note||""} onChange={(e)=>updatePremiumItems(prices.premium.map(x=>x.id===it.id?{...x,note:e.target.value}:x))} placeholder="1.5 to 2 jam, high end mix" className="mt-1 w-full h-11 px-3 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[13px]" />
+                        </div>
+                        <div className="flex justify-end">
+                          <button onClick={()=>removePremiumItem(it.id)} className="h-9 px-4 bg-white/10 border border-white/15 text-white sans text-[11px] rounded-[12px] hover:bg-white/15 active:scale-[0.98]">Hapus</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div>
+                  <label className="sans text-[11px] tracking-[0.12em] uppercase text-white/60">Catatan bawah card PREMIUM</label>
+                  <textarea value={prices.premiumNote} onChange={(e)=>setPrices(p=>({...p,premiumNote:e.target.value}))} rows={2} placeholder="Harga belum termasuk transport..." className="mt-1.5 w-full px-4 py-3 bg-[#2A2A2A] border border-white/10 rounded-[12px] sans text-[13px] text-white resize-none focus:outline-none focus:border-[#C9A96E]" />
+                </div>
+              </div>
+
+              {priceError && <div className="sans text-[12px] text-red-600 bg-red-50 border border-red-200 rounded-[12px] px-4 py-3">{priceError}</div>}
+              <div className="flex flex-col md:flex-row gap-3">
+                <button onClick={handleSavePrices} className="w-full md:w-auto bg-[#C9A96E] text-[#1A1A1A] sans text-[11px] tracking-[0.14em] uppercase font-medium px-8 h-12 min-h-[44px] rounded-[12px] hover:bg-[#b8975a] transition active:scale-[0.98]">Simpan Daftar Harga</button>
+                <span className="sans text-[11px] text-[#1A1A1A]/40 self-center">BASIC dan PREMIUM akan update langsung di landing via realtime sync</span>
+              </div>
+            </div>
+          )}
+
           {tab === "settings" && (
             <div className="space-y-6 max-w-[640px]">
               <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6 space-y-5">
                 <div>
-                  <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">WA Link</label>
-                  <input value={waLink} onChange={(e)=>setWaLink(e.target.value)} placeholder="https://wa.me/..." className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
-                  <div className="sans text-[11px] text-[#1A1A1A]/40 mt-1.5">Link yang dipakai tombol Book via WA di landing.</div>
+                  <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Nomor WA</label>
+                  <input value={waNumber} onChange={(e)=>setWaNumber(e.target.value)} placeholder="0851 7976 3693" inputMode="numeric" pattern="[0-9]*" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
+                  <div className="sans text-[11px] text-[#1A1A1A]/40 mt-1.5">Hanya angka, link otomatis. Contoh: 0851 7976 3693 atau 62851... Validasi 10 to 15 digit. Link wa.me dibuat otomatis.</div>
+                  <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Preview: https://wa.me/{normalizeWaNumber(waNumber) || "62..."}</div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div>
@@ -1001,7 +1154,7 @@ export default function OwnerPage() {
       </div>
 
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#FFFCFA]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[#FFFCFA]/90 border-t border-[#EDE3DA] px-2 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-1.5">
           {[
             {
               id: "portfolio",
@@ -1021,6 +1174,18 @@ export default function OwnerPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="17" rx="2" />
                   <path d="M16 2v4M8 2v4M3 9h18" />
+                </svg>
+              ),
+            },
+            {
+              id: "prices",
+              label: "Harga",
+              icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="9" y1="13" x2="15" y2="13" />
+                  <line x1="9" y1="17" x2="15" y2="17" />
                 </svg>
               ),
             },

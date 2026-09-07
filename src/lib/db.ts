@@ -22,12 +22,28 @@ export type Booking = {
   updatedAt?: string;
 };
 
+export type PriceItem = {
+  id: string;
+  name: string;
+  price: string;
+  note?: string;
+};
+
+export type Prices = {
+  basic: PriceItem[];
+  premium: PriceItem[];
+  basicNote: string;
+  premiumNote: string;
+};
+
 export type Settings = {
   id: string; // always 'main'
   waLink: string;
+  waNumber?: string;
   transportNote?: string;
   priceBasic?: string;
   pricePremium?: string;
+  prices?: Prices;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
@@ -88,7 +104,7 @@ const DB_VERSION = 2;
 export const HIRENA_CHANNEL = "hirena-sync";
 const HIRENA_STORAGE_KEY = "hirena_update_at";
 
-export function broadcastUpdate(type: "portfolio" | "bookings" | "settings", payload?: unknown): void {
+export function broadcastUpdate(type: "portfolio" | "bookings" | "settings" | "prices", payload?: unknown): void {
   void payload;
   try {
     new BroadcastChannel(HIRENA_CHANNEL).postMessage({ type, at: Date.now() });
@@ -377,17 +393,110 @@ async function ensureSeedBookings(db: IDBPDatabase<HirenaDB>) {
   await tx.done;
 }
 
+export function normalizeWaNumber(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("0")) return "62" + digits.slice(1);
+  if (digits.startsWith("62")) return digits;
+  // handle numbers like 851... without prefix
+  if (digits.length >= 9 && digits.startsWith("8")) return "62" + digits;
+  return digits;
+}
+
+export function extractWaNumberFromLink(link: string): string | null {
+  if (!link) return null;
+  try {
+    const m = link.match(/wa\.me\/(\d+)/);
+    if (m) return normalizeWaNumber(m[1]);
+  } catch {}
+  const digits = link.replace(/\D/g, "");
+  if (digits.length >= 10) return normalizeWaNumber(digits);
+  return null;
+}
+
+export function buildWaLink(waNumber: string, text?: string): string {
+  const num = normalizeWaNumber(waNumber) || "6285179763693";
+  const msg = text ?? "Halo Hirena Makeup saya mau tanya slot makeup";
+  return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+}
+
+export function getDefaultPrices(): Prices {
+  return {
+    basic: [
+      { id: "b1", name: "Make Up Only", price: "350K", note: "1.5 to 2 jam tanpa retouch, include softlens normal" },
+      { id: "b2", name: "+ Retouch Standby 3h", price: "650K", note: "Standby di lokasi 3 jam, free mini touch up" },
+      { id: "b3", name: "+ Retouch Follow 8h", price: "1.100K", note: "Follow 8 jam, touch up on demand, free kit" },
+      { id: "b4", name: "Mom Mature 40 to 60", price: "400K", note: "Lift effect, soft glam mature, 1.5 jam" },
+    ],
+    premium: [
+      { id: "p1", name: "Make Up Only", price: "550K", note: "1.5 to 2 jam, high end mix, free mini kit" },
+      { id: "p2", name: "+ Retouch Standby 3h", price: "850K", note: "Standby 3 jam di venue, finishing detail" },
+      { id: "p3", name: "+ Retouch Follow 8h", price: "1.300K", note: "Follow seharian, look locked all day" },
+    ],
+    basicNote: "Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.",
+    premiumNote: "Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.",
+  };
+}
+
+export async function getPrices(): Promise<Prices> {
+  const s = await getSettings();
+  if (s.prices && Array.isArray(s.prices.basic) && Array.isArray(s.prices.premium)) {
+    return s.prices;
+  }
+  return getDefaultPrices();
+}
+
+export async function savePrices(prices: Prices): Promise<void> {
+  const s = await getSettings();
+  s.prices = prices;
+  await saveSettings(s);
+  broadcastUpdate("prices");
+  broadcastUpdate("settings");
+}
+
 async function ensureSeedSettings(db: IDBPDatabase<HirenaDB>) {
   const existing = await db.get("settings", "main");
   if (!existing) {
     const s: Settings = {
       id: "main",
       waLink: "https://wa.me/6285179763693?text=Halo%20Hirena%20Makeup%20saya%20mau%20tanya%20slot%20makeup",
+      waNumber: "6285179763693",
       transportNote: "Bandung and Cimahi 50K to 150K (max 20KM). Luar Bandung +1.000K + transport / makan / akomodasi.",
       priceBasic: "350K",
       pricePremium: "550K",
+      prices: getDefaultPrices(),
     };
     await db.put("settings", s);
+    return;
+  }
+  // migration: waLink -> waNumber and seed prices if missing
+  let needsSave = false;
+  if (!existing.waNumber && existing.waLink) {
+    const extracted = extractWaNumberFromLink(existing.waLink);
+    if (extracted) {
+      existing.waNumber = extracted;
+      needsSave = true;
+    } else {
+      existing.waNumber = "6285179763693";
+      needsSave = true;
+    }
+  }
+  if (!existing.waNumber) {
+    existing.waNumber = "6285179763693";
+    needsSave = true;
+  } else {
+    const normalized = normalizeWaNumber(existing.waNumber);
+    if (normalized !== existing.waNumber) {
+      existing.waNumber = normalized;
+      needsSave = true;
+    }
+  }
+  if (!existing.prices || !Array.isArray(existing.prices.basic) || !Array.isArray(existing.prices.premium)) {
+    existing.prices = getDefaultPrices();
+    needsSave = true;
+  }
+  if (needsSave) {
+    await db.put("settings", existing);
   }
 }
 
@@ -545,14 +654,28 @@ export async function getSettings(): Promise<Settings> {
   const db = await getDb();
   await ensureSeedSettings(db);
   const s = await db.get("settings", "main");
+  if (s) {
+    // runtime migration for waNumber
+    if (!s.waNumber && s.waLink) {
+      const ex = extractWaNumberFromLink(s.waLink);
+      if (ex) s.waNumber = ex;
+    }
+    if (!s.waNumber) s.waNumber = normalizeWaNumber(s.waLink ? extractWaNumberFromLink(s.waLink) || "" : "") || "6285179763693";
+    else s.waNumber = normalizeWaNumber(s.waNumber);
+    if (!s.prices) s.prices = getDefaultPrices();
+  }
   return s!;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
   const db = await getDb();
   settings.id = "main";
+  if (settings.waNumber) settings.waNumber = normalizeWaNumber(settings.waNumber);
+  // keep waLink in sync for legacy
+  if (settings.waNumber) settings.waLink = buildWaLink(settings.waNumber);
   await db.put("settings", settings);
   broadcastUpdate("settings");
+  broadcastUpdate("prices");
 }
 
 export async function getAuth(): Promise<AuthDoc | undefined> {

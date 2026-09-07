@@ -83,3 +83,29 @@ body {
   0% { transform: translateX(-120%); }
   100% { transform: translateX(120%); }
 }
+
+/* scrollbar-hide: hide native bar but keep scroll */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* portfolio swipe polish */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+.snap-mandatory {
+  scroll-snap-type: x mandatory;
+}

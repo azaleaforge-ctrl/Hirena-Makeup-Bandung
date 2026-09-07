@@ -11,7 +11,7 @@ import {
 } from "framer-motion";
 import { useEffect, useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { getCategories, getPortfolioItems, getFeaturedItems, type PortfolioCategory, type PortfolioItem, HIRENA_CHANNEL } from "@/lib/db";
+import { getCategories, getPortfolioItems, getFeaturedItems, getSettings, getPrices, buildWaLink, extractWaNumberFromLink, normalizeWaNumber, getDefaultPrices, type PortfolioCategory, type PortfolioItem, type Prices, HIRENA_CHANNEL } from "@/lib/db";
 import { useHirenaSync } from "@/lib/sync";
 
 const BookingCalendar = dynamic(() => import("@/components/BookingCalendar"), {
@@ -19,7 +19,8 @@ const BookingCalendar = dynamic(() => import("@/components/BookingCalendar"), {
   loading: () => <div className="h-64 animate-pulse bg-[#F6F1EB] rounded-[16px] border border-[#EDE3DA]" />,
 });
 
-const WA_LINK =
+const DEFAULT_WA = "6285179763693";
+const WA_LINK_FALLBACK =
   "https://wa.me/6285179763693?text=Halo%20Hirena%20Makeup%20saya%20mau%20tanya%20slot%20makeup";
 const IG_LINK = "https://instagram.com/hirenamakeup";
 
@@ -230,7 +231,8 @@ function MagneticCTA({
   );
 }
 
-function Header() {
+function Header({ waLink }: { waLink?: string }) {
+  const waHref = waLink || WA_LINK_FALLBACK;
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -299,7 +301,7 @@ function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <MagneticCTA href={WA_LINK} variant="dark">
+            <MagneticCTA href={waHref} variant="dark">
               Book via WA
             </MagneticCTA>
             <button
@@ -340,7 +342,7 @@ function Header() {
                   </motion.a>
                 ))}
                 <a
-                  href={WA_LINK}
+                  href={waHref}
                   target="_blank"
                   className="inline-flex mt-2 bg-[#1A1A1A] text-white px-6 h-11 items-center gap-2 hover:bg-black transition"
                 >
@@ -518,6 +520,17 @@ export default function Home() {
   const [galleryFilter, setGalleryFilter] = useState<string>("all");
   const [preview, setPreview] = useState<PortfolioItem | null>(null);
   const [regulerTab, setRegulerTab] = useState<"basic" | "premium">("premium");
+  const [prices, setPrices] = useState<Prices | null>(null);
+  const [waNumber, setWaNumber] = useState<string>(DEFAULT_WA);
+
+  const waLink = buildWaLink(waNumber);
+  const fallbackPrices = getDefaultPrices();
+  const basicItems = prices ? prices.basic : fallbackPrices.basic;
+  const premiumItems = prices ? prices.premium : fallbackPrices.premium;
+  const basicNote = prices ? prices.basicNote : fallbackPrices.basicNote;
+  const premiumNote = prices ? prices.premiumNote : fallbackPrices.premiumNote;
+  const hasBasic = prices ? prices.basic.length > 0 : true;
+  const hasPremium = prices ? prices.premium.length > 0 : true;
 
   const [showUpdate, setShowUpdate] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -539,6 +552,22 @@ export default function Home() {
   }, [fetchPortfolio]);
 
   useHirenaSync("portfolio", fetchPortfolio, 15000);
+
+  const fetchPricesAndWa = useCallback(async () => {
+    try {
+      const [s, p] = await Promise.all([getSettings(), getPrices()]);
+      setPrices(p);
+      const num = s.waNumber || extractWaNumberFromLink(s.waLink || "") || DEFAULT_WA;
+      setWaNumber(normalizeWaNumber(num) || DEFAULT_WA);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchPricesAndWa();
+  }, [fetchPricesAndWa]);
+
+  useHirenaSync("settings", fetchPricesAndWa, 15000);
+  useHirenaSync("prices", fetchPricesAndWa, 15000);
 
   // popup realtime listeners
   const triggerUpdate = useCallback(() => {
@@ -669,7 +698,7 @@ export default function Home() {
           )}
         </div>
 
-        <Header />
+        <Header waLink={waLink} />
 
         {/* HERO */}
         <section className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 pt-8 lg:pt-20 pb-10 lg:pb-20">
@@ -740,22 +769,56 @@ export default function Home() {
                 </p>
               </Reveal>
               <Reveal delay={0.28}>
-                <div className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-3">
-                  <a
-                    href={WA_LINK}
+                <motion.div
+                  initial={reduce ? {} : { opacity: 0, y: 12 }}
+                  whileInView={reduce ? {} : { opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.52, duration: 0.6, ease: EASE }}
+                  className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-3 w-full lg:w-auto lg:max-w-[420px] max-w-[420px]"
+                >
+                  <motion.a
+                    href={waLink}
                     target="_blank"
                     rel="noopener"
-                    className="w-full lg:w-auto sans text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-14 rounded-full inline-flex items-center justify-center gap-2 hover:bg-black shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition"
+                    whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
+                    whileTap={reduce ? {} : { scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                    className="group relative overflow-hidden w-full lg:w-auto inline-flex items-center justify-center gap-2 sans text-[11px] lg:text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-12 lg:h-[46px] px-6 rounded-full border border-[#1A1A1A] shadow-sm hover:bg-black hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] hover:border-black transition-all duration-300 lg:shrink-0"
                   >
-                    Cek Slot · WA <span className="text-[#C9A96E]">→</span>
-                  </a>
-                  <a
+                    <span className="relative z-10 flex items-center gap-2">
+                      Cek Slot · WA <span className="text-[#C9A96E] group-hover:translate-x-0.5 transition-transform duration-300">→</span>
+                    </span>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{
+                        background:
+                          "linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)",
+                        transform: "translateX(-120%)",
+                      }}
+                    />
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background:
+                          "linear-gradient(100deg, transparent 32%, rgba(255,255,255,0.26) 50%, transparent 68%)",
+                      }}
+                      initial={{ x: "-120%" }}
+                      whileHover={{ x: "120%" }}
+                      transition={{ duration: 0.9, ease: EASE }}
+                    />
+                  </motion.a>
+                  <motion.a
                     href="#reguler"
-                    className="w-full lg:w-auto sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white h-14 lg:h-[56px] rounded-full lg:rounded-none inline-flex items-center justify-center hover:bg-[#F6F1EB] hover:border-[#C9A96E]/30 transition"
+                    whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
+                    whileTap={reduce ? {} : { scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                    className="w-full lg:w-auto inline-flex items-center justify-center sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white lg:bg-transparent text-[#1A1A1A] h-12 lg:h-[46px] px-6 rounded-full hover:bg-[#F6F1EB] hover:border-[#C9A96E] hover:text-[#1A1A1A] transition-all duration-300 lg:shrink-0"
                   >
                     Price List
-                  </a>
-                </div>
+                  </motion.a>
+                </motion.div>
               </Reveal>
               <Reveal delay={0.34}>
                 <div className="mt-8 lg:mt-10 grid grid-cols-3 gap-3 lg:flex lg:items-center lg:gap-6 border-t border-[#EDE3DA] pt-6 max-w-[420px]">
@@ -804,11 +867,11 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* mobile snap */}
-              <div className="lg:hidden -mx-6 px-6">
+              {/* mobile snap - premium swipe */}
+              <div className="lg:hidden -mx-6 px-6 relative">
                 <div
-                  className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none"
-                  style={{ scrollbarWidth: "none" }}
+                  className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-hide overscroll-x-contain scroll-smooth touch-pan-x"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", scrollPaddingInline: "24px", overscrollBehaviorX: "contain", touchAction: "pan-x pinch-zoom" } as any}
                 >
                   {(featured.length > 0 ? featured : Array.from({ length: 9 }).map((_, i) => null)).map((it, i) => {
                     const isGradient = !it || it.imageUrl.startsWith("gradient:");
@@ -820,7 +883,7 @@ export default function Home() {
                         whileInView={reduce ? {} : { opacity: 1, scale: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.04, duration: 0.6, ease: EASE }}
-                        className="shrink-0 snap-start w-[42vw] max-w-[160px] aspect-[3/4] relative overflow-hidden bg-[#F6F1EB] rounded-[22px] border border-[#EDE3DA] will-change-transform"
+                        className="flex-none snap-center w-[44vw] max-w-[168px] aspect-[3/4] relative overflow-hidden bg-[#F6F1EB] rounded-[22px] border border-[#EDE3DA] will-change-transform"
                       >
                         {isGradient ? (
                           <>
@@ -971,7 +1034,7 @@ export default function Home() {
               <a href={IG_LINK} target="_blank" rel="noopener" className="sans text-[11px] tracking-[0.14em] uppercase border border-[#EDE3DA] bg-white px-6 h-11 inline-flex items-center hover:bg-[#F6F1EB] transition rounded-full">
                 Lihat IG @hirenamakeup
               </a>
-              <MagneticCTA href={WA_LINK} variant="ghost">
+              <MagneticCTA href={waLink} variant="ghost">
                 Konsultasi via WA
               </MagneticCTA>
             </div>
@@ -1014,7 +1077,7 @@ export default function Home() {
                   <div className="serif text-[20px] md:text-[22px] leading-[1.2]">{preview.title}</div>
                   <div className="sans text-[12px] leading-[1.7] text-[#1A1A1A]/60 mt-2">{preview.description || "Soft glam look by Hirena Makeup"}</div>
                   <div className="mt-5 flex gap-2">
-                    <a href={WA_LINK} target="_blank" rel="noopener" className="flex-1 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase h-10 inline-flex items-center justify-center hover:bg-black transition rounded-full">
+                    <a href={waLink} target="_blank" rel="noopener" className="flex-1 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase h-10 inline-flex items-center justify-center hover:bg-black transition rounded-full">
                       Tanya Look Ini via WA
                     </a>
                     <button onClick={() => setPreview(null)} className="px-6 h-10 border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.14em] uppercase hover:bg-[#F6F1EB] transition rounded-full">
@@ -1116,210 +1179,221 @@ export default function Home() {
           </Reveal>
 
           {/* mobile tabs BASIC | PREMIUM */}
-          <div className="lg:hidden flex p-1 bg-[#F6F1EB] rounded-full border border-[#EDE3DA] mb-5">
-            <button
-              onClick={() => setRegulerTab("basic")}
-              className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "basic" ? "bg-white shadow-sm border border-[#EDE3DA] text-[#1A1A1A]" : "text-[#1A1A1A]/60"}`}
-            >
-              Basic
-            </button>
-            <button
-              onClick={() => setRegulerTab("premium")}
-              className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "premium" ? "bg-[#1A1A1A] text-white shadow-sm" : "text-[#1A1A1A]/60"}`}
-            >
-              Premium
-            </button>
-          </div>
+          {hasBasic && hasPremium && (
+            <div className="lg:hidden flex p-1 bg-[#F6F1EB] rounded-full border border-[#EDE3DA] mb-5">
+              <button
+                onClick={() => setRegulerTab("basic")}
+                className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "basic" ? "bg-white shadow-sm border border-[#EDE3DA] text-[#1A1A1A]" : "text-[#1A1A1A]/60"}`}
+              >
+                Basic
+              </button>
+              <button
+                onClick={() => setRegulerTab("premium")}
+                className={`flex-1 h-10 rounded-full sans text-[11px] tracking-[0.12em] uppercase font-medium transition ${regulerTab === "premium" ? "bg-[#1A1A1A] text-white shadow-sm" : "text-[#1A1A1A]/60"}`}
+              >
+                Premium
+              </button>
+            </div>
+          )}
 
           {/* mobile single card */}
-          <div className="lg:hidden">
-            {regulerTab === "basic" ? (
-              <motion.div
-                key="basic-m"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: EASE }}
-                className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-6 shadow-sm"
-              >
-                <div className="flex items-baseline justify-between">
-                  <h3 className="serif text-[20px] tracking-[0.12em]">BASIC</h3>
-                  <span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span>
-                </div>
-                <div className="mt-6 space-y-5">
-                  {[
-                    { title: "Make Up Only", price: "350K", desc: "1.5 to 2 jam tanpa retouch, include softlens normal" },
-                    { title: "+ Retouch Standby 3h", price: "650K", desc: "Standby di lokasi 3 jam, free mini touch up" },
-                    { title: "+ Retouch Follow 8h", price: "1.100K", desc: "Follow 8 jam, touch up on demand, free kit" },
-                    { title: "Mom Mature 40 to 60", price: "400K", desc: "Lift effect, soft glam mature, 1.5 jam" },
-                  ].map((it) => (
-                    <div key={it.title} className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0">
-                      <div>
-                        <div className="sans text-[12px] font-medium tracking-[0.02em]">{it.title}</div>
-                        <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.desc}</div>
-                      </div>
-                      <div className="serif text-[18px] shrink-0">{it.price}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60">
-                  Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.
-                </div>
-                <a href={WA_LINK} target="_blank" rel="noopener" className="mt-5 w-full h-11 rounded-full bg-white border border-[#EDE3DA] sans text-[11px] tracking-[0.14em] uppercase inline-flex items-center justify-center hover:bg-[#F6F1EB] transition">
-                  Book Basic · WA
-                </a>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="premium-m"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: EASE }}
-                className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[24px] p-6 overflow-hidden shadow-sm border border-[#1A1A1A]"
-              >
-                <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
-                <div className="absolute top-5 right-5 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">
-                  Most Booked
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <h3 className="serif text-[20px] tracking-[0.12em]">PREMIUM</h3>
-                  <span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span>
-                </div>
-                <div className="mt-6 space-y-5">
-                  {[
-                    { title: "Make Up Only", price: "550K", desc: "1.5 to 2 jam, high end mix, free mini kit" },
-                    { title: "+ Retouch Standby 3h", price: "850K", desc: "Standby 3 jam di venue, finishing detail" },
-                    { title: "+ Retouch Follow 8h", price: "1.300K", desc: "Follow seharian, look locked all day" },
-                  ].map((it) => (
-                    <div key={it.title} className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0">
-                      <div>
-                        <div className="sans text-[12px] font-medium">{it.title}</div>
-                        <div className="sans text-[11px] text-white/50 mt-1">{it.desc}</div>
-                      </div>
-                      <div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">
-                  Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi empat, clean look.
-                </div>
-                <a href={WA_LINK} target="_blank" rel="noopener" className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 rounded-full inline-flex items-center justify-center hover:bg-[#ddbf8b] transition font-medium">
-                  Book Premium · WA
-                </a>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="hidden lg:grid lg:grid-cols-2 lg:gap-[14px]">
-            <Reveal>
-              <motion.div
-                whileHover={reduce ? {} : { y: -4 }}
-                className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-7 lg:p-9 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] hover:border-[#C9A96E]/20 transition will-change-transform group"
-              >
-                <div className="flex items-baseline justify-between">
-                  <h3 className="serif text-[22px] tracking-[0.12em]">BASIC</h3>
-                  <span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span>
-                </div>
-                <div className="mt-6 space-y-5">
-                  {[
-                    { title: "Make Up Only", price: "350K", desc: "1.5 to 2 jam tanpa retouch, include softlens normal" },
-                    { title: "+ Retouch Standby 3h", price: "650K", desc: "Standby di lokasi 3 jam, free mini touch up" },
-                    { title: "+ Retouch Follow 8h", price: "1.100K", desc: "Follow 8 jam, touch up on demand, free kit" },
-                    { title: "Mom Mature 40 to 60", price: "400K", desc: "Lift effect, soft glam mature, 1.5 jam" },
-                  ].map((it, idx) => (
-                    <motion.div
-                      key={it.title}
-                      initial={reduce ? {} : { opacity: 0, y: 10 }}
-                      whileInView={reduce ? {} : { opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: idx * 0.06, duration: 0.5, ease: EASE }}
-                      className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0 hover:pl-1 transition-all duration-300"
-                    >
-                      <div>
-                        <div className="sans text-[12px] font-medium tracking-[0.02em]">{it.title}</div>
-                        <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.desc}</div>
-                      </div>
-                      <div className="serif text-[18px] shrink-0">{it.price}</div>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60 group-hover:border-[#C9A96E]/20 transition">
-                  Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi
-                  empat, clean look.
-                </div>
-                <MagneticCTA href={WA_LINK} variant="ghost">
-                  Book Basic · WA
-                </MagneticCTA>
-              </motion.div>
-            </Reveal>
-
-            <Reveal delay={0.08}>
-              <div className="relative rounded-[24px] p-[1.2px] overflow-hidden group">
-                {!reduce && (
+          {!hasBasic && !hasPremium ? (
+            <div className="lg:hidden sans text-[12px] text-[#1A1A1A]/40 bg-[#F6F1EB] rounded-[16px] border border-dashed border-[#EDE3DA] p-8 text-center">Daftar harga segera hadir.</div>
+          ) : (
+            <div className="lg:hidden">
+              {hasBasic && hasPremium ? (
+                regulerTab === "basic" ? (
                   <motion.div
-                    className="absolute inset-0"
-                    style={{
-                      background: "conic-gradient(from 0deg at 50% 50%, #C9A96E 0%, #E8D5B8 14%, #C9A96E 28%, #1A1A1A 50%, #C9A96E 78%, #E8D5B8 90%, #C9A96E 100%)",
-                    }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                  />
-                )}
-                {reduce && <div className="absolute inset-0 bg-[#C9A96E]/20" />}
-                <motion.div
-                  whileHover={reduce ? {} : { y: -4, scale: 1.005 }}
-                  className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[23px] p-7 lg:p-9 overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.18)] will-change-transform"
-                >
-                  <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
-                  <motion.div
-                    className="absolute -bottom-20 -left-20 w-[220px] h-[220px] bg-[#C9A96E]/10 blur-[40px] rounded-full"
-                    animate={reduce ? {} : { scale: [1, 1.12, 1], opacity: [0.6, 0.9, 0.6] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <div className="absolute top-6 right-6 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">
-                    Most Booked
-                  </div>
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="serif text-[22px] tracking-[0.12em]">PREMIUM</h3>
-                    <span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span>
-                  </div>
-                  <div className="mt-6 space-y-5">
-                    {[
-                      { title: "Make Up Only", price: "550K", desc: "1.5 to 2 jam, high end mix, free mini kit" },
-                      { title: "+ Retouch Standby 3h", price: "850K", desc: "Standby 3 jam di venue, finishing detail" },
-                      { title: "+ Retouch Follow 8h", price: "1.300K", desc: "Follow seharian, look locked all day" },
-                    ].map((it, idx) => (
-                      <motion.div
-                        key={it.title}
-                        initial={reduce ? {} : { opacity: 0, y: 10 }}
-                        whileInView={reduce ? {} : { opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.12 + idx * 0.06, duration: 0.5, ease: EASE }}
-                        className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0"
-                      >
-                        <div>
-                          <div className="sans text-[12px] font-medium">{it.title}</div>
-                          <div className="sans text-[11px] text-white/50 mt-1">{it.desc}</div>
-                        </div>
-                        <div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                  <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">
-                    Harga belum termasuk transport Bandung and Cimahi 50K to 150K (max 20KM). Hijab do by MUA hanya segi
-                    empat, clean look.
-                  </div>
-                  <a
-                    href={WA_LINK}
-                    target="_blank"
-                    className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 inline-flex items-center justify-center hover:bg-[#ddbf8b] hover:shadow-[0_8px_22px_rgba(201,169,110,0.35)] transition font-medium relative overflow-hidden group/btn"
+                    key="basic-m"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-6 shadow-sm"
                   >
-                    <span className="relative z-10">Book Premium · WA</span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700" />
-                  </a>
+                    <div className="flex items-baseline justify-between">
+                      <h3 className="serif text-[20px] tracking-[0.12em]">BASIC</h3>
+                      <span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span>
+                    </div>
+                    <div className="mt-6 space-y-5">
+                      {basicItems.map((it) => (
+                        <div key={it.id} className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0">
+                          <div>
+                            <div className="sans text-[12px] font-medium tracking-[0.02em]">{it.name}</div>
+                            <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.note || ""}</div>
+                          </div>
+                          <div className="serif text-[18px] shrink-0">{it.price}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60">
+                      {basicNote}
+                    </div>
+                    <a href={waLink} target="_blank" rel="noopener" className="mt-5 w-full h-11 rounded-full bg-white border border-[#EDE3DA] sans text-[11px] tracking-[0.14em] uppercase inline-flex items-center justify-center hover:bg-[#F6F1EB] transition">
+                      Book Basic · WA
+                    </a>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="premium-m"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[24px] p-6 overflow-hidden shadow-sm border border-[#1A1A1A]"
+                  >
+                    <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
+                    <div className="absolute top-5 right-5 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">
+                      Most Booked
+                    </div>
+                    <div className="flex items-baseline gap-3">
+                      <h3 className="serif text-[20px] tracking-[0.12em]">PREMIUM</h3>
+                      <span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span>
+                    </div>
+                    <div className="mt-6 space-y-5">
+                      {premiumItems.map((it) => (
+                        <div key={it.id} className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0">
+                          <div>
+                            <div className="sans text-[12px] font-medium">{it.name}</div>
+                            <div className="sans text-[11px] text-white/50 mt-1">{it.note || ""}</div>
+                          </div>
+                          <div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">
+                      {premiumNote}
+                    </div>
+                    <a href={waLink} target="_blank" rel="noopener" className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 rounded-full inline-flex items-center justify-center hover:bg-[#ddbf8b] transition font-medium">
+                      Book Premium · WA
+                    </a>
+                  </motion.div>
+                )
+              ) : hasBasic ? (
+                <motion.div key="basic-only-m" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-6 shadow-sm">
+                  <div className="flex items-baseline justify-between"><h3 className="serif text-[20px] tracking-[0.12em]">BASIC</h3><span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span></div>
+                  <div className="mt-6 space-y-5">{basicItems.map((it) => (<div key={it.id} className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0"><div><div className="sans text-[12px] font-medium tracking-[0.02em]">{it.name}</div><div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.note || ""}</div></div><div className="serif text-[18px] shrink-0">{it.price}</div></div>))}</div>
+                  <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60">{basicNote}</div>
+                  <a href={waLink} target="_blank" rel="noopener" className="mt-5 w-full h-11 rounded-full bg-white border border-[#EDE3DA] sans text-[11px] tracking-[0.14em] uppercase inline-flex items-center justify-center hover:bg-[#F6F1EB] transition">Book Basic · WA</a>
                 </motion.div>
-              </div>
-            </Reveal>
-          </div>
+              ) : (
+                <motion.div key="premium-only-m" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[24px] p-6 overflow-hidden shadow-sm border border-[#1A1A1A]">
+                  <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" /><div className="absolute top-5 right-5 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">Most Booked</div>
+                  <div className="flex items-baseline gap-3"><h3 className="serif text-[20px] tracking-[0.12em]">PREMIUM</h3><span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span></div>
+                  <div className="mt-6 space-y-5">{premiumItems.map((it) => (<div key={it.id} className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0"><div><div className="sans text-[12px] font-medium">{it.name}</div><div className="sans text-[11px] text-white/50 mt-1">{it.note || ""}</div></div><div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div></div>))}</div>
+                  <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">{premiumNote}</div>
+                  <a href={waLink} target="_blank" rel="noopener" className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 rounded-full inline-flex items-center justify-center hover:bg-[#ddbf8b] transition font-medium">Book Premium · WA</a>
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {!hasBasic && !hasPremium ? (
+            <div className="hidden lg:block sans text-[12px] text-[#1A1A1A]/40 bg-[#F6F1EB] rounded-[16px] border border-dashed border-[#EDE3DA] p-10 text-center">Daftar harga segera hadir.</div>
+          ) : (
+            <div className={`hidden lg:grid gap-[14px] ${hasBasic && hasPremium ? "lg:grid-cols-2" : "lg:grid-cols-1 max-w-[640px] mx-auto"}`}>
+              {hasBasic && (
+                <Reveal>
+                  <motion.div
+                    whileHover={reduce ? {} : { y: -4 }}
+                    className="bg-[#FFFCFA] rounded-[24px] border border-[#EDE3DA] p-7 lg:p-9 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.06)] hover:border-[#C9A96E]/20 transition will-change-transform group"
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <h3 className="serif text-[22px] tracking-[0.12em]">BASIC</h3>
+                      <span className="sans text-[10px] tracking-[0.16em] uppercase text-[#1A1A1A]/40">Cream edition</span>
+                    </div>
+                    <div className="mt-6 space-y-5">
+                      {basicItems.map((it, idx) => (
+                        <motion.div
+                          key={it.id}
+                          initial={reduce ? {} : { opacity: 0, y: 10 }}
+                          whileInView={reduce ? {} : { opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: idx * 0.06, duration: 0.5, ease: EASE }}
+                          className="flex justify-between gap-4 pb-5 border-b border-[#EDE3DA] last:border-0 hover:pl-1 transition-all duration-300"
+                        >
+                          <div>
+                            <div className="sans text-[12px] font-medium tracking-[0.02em]">{it.name}</div>
+                            <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1 leading-[1.5]">{it.note || ""}</div>
+                          </div>
+                          <div className="serif text-[18px] shrink-0">{it.price}</div>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <div className="mt-6 rounded-[14px] bg-[#F6F1EB] border border-[#EDE3DA] p-4 sans text-[11px] leading-[1.7] text-[#1A1A1A]/60 group-hover:border-[#C9A96E]/20 transition">
+                      {basicNote}
+                    </div>
+                    <MagneticCTA href={waLink} variant="ghost">
+                      Book Basic · WA
+                    </MagneticCTA>
+                  </motion.div>
+                </Reveal>
+              )}
+
+              {hasPremium && (
+                <Reveal delay={hasBasic ? 0.08 : 0}>
+                  <div className="relative rounded-[24px] p-[1.2px] overflow-hidden group">
+                    {!reduce && (
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: "conic-gradient(from 0deg at 50% 50%, #C9A96E 0%, #E8D5B8 14%, #C9A96E 28%, #1A1A1A 50%, #C9A96E 78%, #E8D5B8 90%, #C9A96E 100%)",
+                        }}
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                      />
+                    )}
+                    {reduce && <div className="absolute inset-0 bg-[#C9A96E]/20" />}
+                    <motion.div
+                      whileHover={reduce ? {} : { y: -4, scale: 1.005 }}
+                      className="relative bg-[#1A1A1A] text-[#FFFCFA] rounded-[23px] p-7 lg:p-9 overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.18)] will-change-transform"
+                    >
+                      <div className="absolute -top-20 -right-20 w-[260px] h-[260px] bg-[#C9A96E]/15 blur-[50px] rounded-full" />
+                      <motion.div
+                        className="absolute -bottom-20 -left-20 w-[220px] h-[220px] bg-[#C9A96E]/10 blur-[40px] rounded-full"
+                        animate={reduce ? {} : { scale: [1, 1.12, 1], opacity: [0.6, 0.9, 0.6] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      <div className="absolute top-6 right-6 sans text-[9px] tracking-[0.2em] uppercase bg-[#C9A96E] text-[#1A1A1A] px-3 py-1 rounded-full">
+                        Most Booked
+                      </div>
+                      <div className="flex items-baseline gap-3">
+                        <h3 className="serif text-[22px] tracking-[0.12em]">PREMIUM</h3>
+                        <span className="sans text-[10px] tracking-[0.16em] uppercase text-white/40">Black and gold</span>
+                      </div>
+                      <div className="mt-6 space-y-5">
+                        {premiumItems.map((it, idx) => (
+                          <motion.div
+                            key={it.id}
+                            initial={reduce ? {} : { opacity: 0, y: 10 }}
+                            whileInView={reduce ? {} : { opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.12 + idx * 0.06, duration: 0.5, ease: EASE }}
+                            className="flex justify-between gap-4 pb-5 border-b border-white/10 last:border-0"
+                          >
+                            <div>
+                              <div className="sans text-[12px] font-medium">{it.name}</div>
+                              <div className="sans text-[11px] text-white/50 mt-1">{it.note || ""}</div>
+                            </div>
+                            <div className="serif text-[18px] text-[#C9A96E] shrink-0">{it.price}</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                      <div className="mt-6 rounded-[14px] bg-white/5 border border-white/10 p-4 sans text-[11px] leading-[1.7] text-white/60">
+                        {premiumNote}
+                      </div>
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        className="mt-6 w-full sans text-[11px] tracking-[0.16em] uppercase bg-[#C9A96E] text-[#1A1A1A] h-11 inline-flex items-center justify-center hover:bg-[#ddbf8b] hover:shadow-[0_8px_22px_rgba(201,169,110,0.35)] transition font-medium relative overflow-hidden group/btn"
+                      >
+                        <span className="relative z-10">Book Premium · WA</span>
+                        <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700" />
+                      </a>
+                    </motion.div>
+                  </div>
+                </Reveal>
+              )}
+            </div>
+          )}
         </section>
 
         {/* BRIDE */}
@@ -1513,7 +1587,7 @@ export default function Home() {
                       <div className="sans text-[11px] text-white/50 mt-1">Katalog WA sudah include T and C lengkap</div>
                     </div>
                     <a
-                      href={WA_LINK}
+                      href={waLink}
                       target="_blank"
                       className="sans text-[10px] tracking-[0.16em] uppercase border border-white/20 px-5 h-10 inline-flex items-center hover:bg-white hover:text-black transition shrink-0"
                     >
@@ -1694,7 +1768,7 @@ export default function Home() {
             </Reveal>
             <Reveal delay={0.12}>
               <div className="mt-6 flex flex-wrap gap-3">
-                <MagneticCTA href={WA_LINK} variant="dark">
+                <MagneticCTA href={waLink} variant="dark">
                   Tanya Slot via WA
                 </MagneticCTA>
                 <span className="sans text-[11px] tracking-[0.12em] uppercase border border-[#EDE3DA] bg-white px-5 h-11 inline-flex items-center text-[#1A1A1A]/60">
@@ -1736,7 +1810,7 @@ export default function Home() {
                   tanggalmu sebelum penuh.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <MagneticCTA href={WA_LINK} variant="light">
+                  <MagneticCTA href={waLink} variant="light">
                     Book via WhatsApp <span className="text-[#C9A96E]">→</span>
                   </MagneticCTA>
                   <motion.a

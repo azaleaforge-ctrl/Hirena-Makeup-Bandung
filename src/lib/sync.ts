@@ -6,7 +6,7 @@ import { HIRENA_CHANNEL } from "./db";
 export const HIRENA_SYNC_CHANNEL = HIRENA_CHANNEL;
 const STORAGE_KEY = "hirena_update_at";
 
-export function broadcastHirena(type: "portfolio" | "bookings" | "settings"): void {
+export function broadcastHirena(type: "portfolio" | "bookings" | "settings" | "prices"): void {
   try {
     new BroadcastChannel(HIRENA_CHANNEL).postMessage({ type, at: Date.now() });
   } catch {}

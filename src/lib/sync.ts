@@ -52,7 +52,9 @@ function useHirenaRealtimeInternal(callback: () => void, typeFilter: string | un
     window.addEventListener("hirena:update", onCustom as EventListener);
     window.addEventListener("storage", onStorage);
 
-    const interval = window.setInterval(() => trigger(), intervalMs);
+    // honey: removed blind polling interval that caused UpdatePopup to fire every 15s
+    // even without edits. Realtime now relies purely on BroadcastChannel / CustomEvent / storage.
+    // Polling is unnecessary and caused false-positive refresh prompts.
 
     return () => {
       try {
@@ -60,7 +62,6 @@ function useHirenaRealtimeInternal(callback: () => void, typeFilter: string | un
       } catch {}
       window.removeEventListener("hirena:update", onCustom as EventListener);
       window.removeEventListener("storage", onStorage);
-      window.clearInterval(interval);
     };
   }, [typeFilter, intervalMs, trigger]);
 

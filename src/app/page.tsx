@@ -623,46 +623,46 @@ export default function Home() {
               </Reveal>
 
               {reduce ? (
-                <h1 className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400] text-center lg:text-left">
+                <h1 className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.95] tracking-[-0.025em] font-[400] text-center lg:text-left pb-1 overflow-visible">
                   Soft Glam
                   <br />
                   <span className="serif2 italic font-light text-[#1A1A1A]/80">that still</span>
                   <br />
                   looks like
                   <br />
-                  you.
+                  <span className="inline-block pb-1">you.</span>
                 </h1>
               ) : (
                 <motion.h1
-                  className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400] text-center lg:text-left"
+                  className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.95] tracking-[-0.025em] font-[400] text-center lg:text-left overflow-visible"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  <motion.span className="block overflow-hidden" variants={containerVariants}>
+                  <motion.span className="block overflow-hidden py-1 -my-1" variants={containerVariants}>
                     {line1.map((w) => (
                       <motion.span key={w} variants={wordVariants} className="inline-block mr-[0.18em] will-change-transform">
                         {w}
                       </motion.span>
                     ))}
                   </motion.span>
-                  <motion.span className="block overflow-hidden serif2 italic font-light text-[#1A1A1A]/80" variants={containerVariants}>
+                  <motion.span className="block overflow-hidden serif2 italic font-light text-[#1A1A1A]/80 py-1 -my-1" variants={containerVariants}>
                     {line2.map((w) => (
                       <motion.span key={w} variants={wordVariants} className="inline-block mr-[0.18em] will-change-transform">
                         {w}
                       </motion.span>
                     ))}
                   </motion.span>
-                  <motion.span className="block overflow-hidden" variants={containerVariants}>
+                  <motion.span className="block overflow-hidden py-1 -my-1" variants={containerVariants}>
                     {line3.map((w) => (
                       <motion.span key={w} variants={wordVariants} className="inline-block mr-[0.18em] will-change-transform">
                         {w}
                       </motion.span>
                     ))}
                   </motion.span>
-                  <motion.span className="block overflow-hidden" variants={containerVariants}>
+                  <motion.span className="block overflow-hidden pb-2 -mb-2 pt-1 -mt-1" variants={containerVariants}>
                     {line4.map((w) => (
-                      <motion.span key={w} variants={wordVariants} className="inline-block will-change-transform">
+                      <motion.span key={w} variants={wordVariants} className="inline-block will-change-transform pb-1">
                         {w}
                       </motion.span>
                     ))}
@@ -692,7 +692,7 @@ export default function Home() {
                     whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
                     whileTap={reduce ? {} : { scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                    className="group relative overflow-hidden w-full lg:w-auto flex-1 lg:flex-none min-w-0 basis-0 lg:basis-auto box-border max-w-full inline-flex items-center justify-center gap-2 sans text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-12 lg:h-[46px] px-4 lg:px-6 rounded-full border border-[#1A1A1A] shadow-sm hover:bg-black hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] hover:border-black transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
+                    className="group relative overflow-hidden w-full lg:w-auto flex-none min-w-0 box-border max-w-full inline-flex items-center justify-center gap-2 sans text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-12 lg:h-[46px] px-4 lg:px-6 rounded-full border border-[#1A1A1A] shadow-sm hover:bg-black hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] hover:border-black transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
                   >
                     <span className="relative z-10 flex items-center gap-2 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis justify-center">
                       <span className="truncate">Cek Slot · WA</span> <span className="text-[#C9A96E] group-hover:translate-x-0.5 transition-transform duration-300 shrink-0">→</span>
@@ -723,7 +723,7 @@ export default function Home() {
                     whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
                     whileTap={reduce ? {} : { scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                    className="w-full lg:w-auto flex-1 lg:flex-none min-w-0 basis-0 lg:basis-auto box-border max-w-full inline-flex items-center justify-center sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white lg:bg-transparent text-[#1A1A1A] h-12 lg:h-[46px] px-4 lg:px-6 rounded-full hover:bg-[#F6F1EB] hover:border-[#C9A96E] hover:text-[#1A1A1A] transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
+                    className="w-full lg:w-auto flex-none min-w-0 box-border max-w-full inline-flex items-center justify-center sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white lg:bg-transparent text-[#1A1A1A] h-12 lg:h-[46px] px-4 lg:px-6 rounded-full hover:bg-[#F6F1EB] hover:border-[#C9A96E] hover:text-[#1A1A1A] transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
                   >
                     Price List
                   </motion.a>

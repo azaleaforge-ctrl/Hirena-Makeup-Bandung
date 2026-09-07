@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FFFCFA;
+  --foreground: #1A1A1A;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+::selection {
+  background: #C9A96E;
+  color: #FFFCFA;
+}
+
+/* scrollbar elegant */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C9A96E #F6F1EB;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #F6F1EB;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #C9A96E;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #b8975a;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .serif {
+    font-family: var(--font-playfair), serif;
+  }
+  .serif2 {
+    font-family: var(--font-cormorant), serif;
+  }
+  .sans {
+    font-family: var(--font-inter), sans-serif;
+  }
+  .will-change-transform {
+    will-change: transform, opacity, filter;
+  }
+}
+
+/* premium helpers */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* shimmer keyframes fallback (motion handles main) */
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}

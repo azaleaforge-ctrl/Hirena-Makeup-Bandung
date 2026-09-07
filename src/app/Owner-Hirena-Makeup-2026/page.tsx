@@ -89,11 +89,9 @@ export default function OwnerPage() {
   const [bulkStart, setBulkStart] = useState("");
   const [bulkEnd, setBulkEnd] = useState("");
 
-  // settings form
-  const [waNumber, setWaNumber] = useState("");
+  // settings form: WA sisa without +62
+  const [waSisa, setWaSisa] = useState("");
   const [transportNote, setTransportNote] = useState("");
-  const [priceBasic, setPriceBasic] = useState("");
-  const [pricePremium, setPricePremium] = useState("");
 
   // prices (Daftar Harga)
   const [prices, setPrices] = useState<Prices>(getDefaultPrices());
@@ -130,15 +128,19 @@ export default function OwnerPage() {
       setItems(its);
       setBookings(bks);
       setSettingsState(s);
-      // migrate waLink -> waNumber
+      // migrate waLink -> waNumber to sisa (without 62)
       let num = s.waNumber || "";
       if (!num && s.waLink) num = extractWaNumberFromLink(s.waLink) || "";
-      num = normalizeWaNumber(num);
-      setWaNumber(num || "6285179763693");
+      num = normalizeWaNumber(num) || "6285179763693";
+      // display sisa: strip leading 62 or 0
+      let sisa = num;
+      if (sisa.startsWith("62")) sisa = sisa.slice(2);
+      else if (sisa.startsWith("0")) sisa = sisa.slice(1);
+      // also strip non-digits just in case
+      sisa = sisa.replace(/\D/g, "");
+      setWaSisa(sisa);
       setPrices(p);
       setTransportNote(s.transportNote || "");
-      setPriceBasic(s.priceBasic || "");
-      setPricePremium(s.pricePremium || "");
       if (cats.length > 0 && !newItemCat) setNewItemCat(cats[0].id);
     } catch {}
   }
@@ -553,22 +555,25 @@ export default function OwnerPage() {
 
   async function handleSaveSettings() {
     if (!settings) return;
-    const normalized = normalizeWaNumber(waNumber.trim());
-    if (!normalized || normalized.length < 10 || normalized.length > 15) {
-      showToast("Nomor WA tidak valid (10 to 15 digit, diawali 62)");
+    // waSisa: only digits after +62, 9 to 12 digits
+    let digits = waSisa.replace(/\D/g, "");
+    if (digits.startsWith("0")) digits = digits.slice(1);
+    if (digits.startsWith("62")) digits = digits.slice(2);
+    digits = digits.replace(/\D/g, "");
+    if (!digits || digits.length < 9 || digits.length > 12) {
+      showToast("Nomor WA tidak valid (9 to 12 digit setelah +62)");
       return;
     }
+    const normalized = "62" + digits;
     const next: Settings = {
       ...settings,
       waNumber: normalized,
       waLink: `https://wa.me/${normalized}?text=${encodeURIComponent("Halo Hirena Makeup saya mau tanya slot makeup")}`,
       transportNote: transportNote.trim(),
-      priceBasic: priceBasic.trim(),
-      pricePremium: pricePremium.trim(),
     };
     await saveSettings(next);
     setSettingsState(next);
-    setWaNumber(normalized);
+    setWaSisa(digits);
     broadcastUpdate("settings");
     broadcastUpdate("prices");
     showToast("Pengaturan disimpan dan terpublish");
@@ -1123,19 +1128,24 @@ export default function OwnerPage() {
               <div className="bg-white rounded-[16px] border border-[#EDE3DA] p-4 md:p-6 space-y-5">
                 <div>
                   <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Nomor WA</label>
-                  <input value={waNumber} onChange={(e)=>setWaNumber(e.target.value)} placeholder="0851 7976 3693" inputMode="numeric" pattern="[0-9]*" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]" />
-                  <div className="sans text-[11px] text-[#1A1A1A]/40 mt-1.5">Hanya angka, link otomatis. Contoh: 0851 7976 3693 atau 62851... Validasi 10 to 15 digit. Link wa.me dibuat otomatis.</div>
-                  <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Preview: https://wa.me/{normalizeWaNumber(waNumber) || "62..."}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <div>
-                    <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Harga Basic</label>
-                    <input value={priceBasic} onChange={(e)=>setPriceBasic(e.target.value)} placeholder="350K" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
+                  <div className="mt-1.5 relative flex items-center">
+                    <span className="absolute left-0 inset-y-0 flex items-center px-4 bg-[#F6F1EB] border border-[#EDE3DA] rounded-l-[12px] sans text-[14px] font-medium text-[#1A1A1A] select-none pointer-events-none">+62</span>
+                    <input
+                      value={waSisa}
+                      onChange={(e)=>{
+                        let v = e.target.value.replace(/\D/g, "");
+                        if (v.startsWith("0")) v = v.slice(1);
+                        if (v.startsWith("62")) v = v.slice(2);
+                        setWaSisa(v);
+                      }}
+                      placeholder="851 7976 3693"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="w-full h-12 pl-[68px] pr-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px] focus:outline-none focus:border-[#C9A96E]"
+                    />
                   </div>
-                  <div>
-                    <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Harga Premium</label>
-                    <input value={pricePremium} onChange={(e)=>setPricePremium(e.target.value)} placeholder="550K" className="mt-1.5 w-full h-12 px-4 bg-white border border-[#EDE3DA] rounded-[12px] sans text-[14px]" />
-                  </div>
+                  <div className="sans text-[11px] text-[#1A1A1A]/40 mt-1.5">Isi tanpa awalan 0. Contoh: 851 7976 3693. 9 to 12 digit setelah +62. Link wa.me dibuat otomatis.</div>
+                  <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Preview: https://wa.me/{waSisa ? `62${waSisa.replace(/\D/g,"").replace(/^0+/,"")}` : "62..."}</div>
                 </div>
                 <div>
                   <label className="sans text-[11px] tracking-[0.12em] uppercase text-[#1A1A1A]/60">Catatan Transport</label>

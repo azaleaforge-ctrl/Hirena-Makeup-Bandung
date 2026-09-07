@@ -11,29 +11,39 @@ import {
 } from "framer-motion";
 import { useEffect, useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { getCategories, getPortfolioItems, getFeaturedItems, getSettings, getPrices, buildWaLink, extractWaNumberFromLink, normalizeWaNumber, getDefaultPrices, type PortfolioCategory, type PortfolioItem, type Prices, HIRENA_CHANNEL } from "@/lib/db";
+import { getCategories, getPortfolioItems, getFeaturedItems, getSettings, getPrices, buildWaLink, extractWaNumberFromLink, normalizeWaNumber, getDefaultPrices, type PortfolioCategory, type PortfolioItem, type Prices } from "@/lib/db";
 import { useHirenaSync } from "@/lib/sync";
 
 const BookingCalendar = dynamic(() => import("@/components/BookingCalendar"), {
   ssr: false,
   loading: () => <div className="h-64 animate-pulse bg-[#F6F1EB] rounded-[16px] border border-[#EDE3DA]" />,
 });
+const UpdatePopup = dynamic(() => import("@/components/UpdatePopup"), {
+  ssr: false,
+  loading: () => null,
+});
+const PortfolioModal = dynamic(() => import("@/components/PortfolioModal"), {
+  ssr: false,
+  loading: () => null,
+});
+const GalleryGrid = dynamic(() => import("@/components/GalleryGrid"), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse bg-[#F6F1EB] rounded-[22px] border border-[#EDE3DA] mt-2" />,
+});
 
 const DEFAULT_WA = "6285179763693";
-const WA_LINK_FALLBACK =
-  "https://wa.me/6285179763693?text=Halo%20Hirena%20Makeup%20saya%20mau%20tanya%20slot%20makeup";
+const WA_LINK_FALLBACK = buildWaLink(DEFAULT_WA);
 const IG_LINK = "https://instagram.com/hirenamakeup";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const revealVariants = {
-  hidden: { opacity: 0, y: 24, filter: "blur(4px)", scale: 0.98 },
+  hidden: { opacity: 0, y: 24, scale: 0.98 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     scale: 1,
-    transition: { duration: 0.7, ease: EASE },
+    transition: { duration: 0.55, ease: EASE },
   },
 };
 
@@ -45,12 +55,11 @@ const containerVariants = {
 };
 
 const wordVariants = {
-  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.9, ease: EASE },
+    transition: { duration: 0.7, ease: EASE },
   },
 };
 
@@ -73,8 +82,8 @@ function Reveal({
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-60px", amount: 0.18 }}
-      transition={{ duration: 0.7, ease: EASE, delay }}
-      style={{ willChange: "transform, opacity, filter" } as any}
+      transition={{ duration: 0.55, ease: EASE, delay }}
+      style={{ willChange: "transform, opacity" } as any}
       className={className}
     >
       {children}
@@ -176,13 +185,22 @@ function MagneticCTA({
 }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLAnchorElement>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia("(min-width: 1024px)");
+    const upd = () => setIsDesktop(m.matches);
+    upd();
+    m.addEventListener("change", upd);
+    return () => m.removeEventListener("change", upd);
+  }, []);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   const sx = useSpring(mx, { stiffness: 260, damping: 18 });
   const sy = useSpring(my, { stiffness: 260, damping: 18 });
+  const enableMagnetic = !reduce && isDesktop;
 
   const handleMove = (e: React.MouseEvent) => {
-    if (reduce || !ref.current) return;
+    if (!enableMagnetic || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
@@ -209,10 +227,10 @@ function MagneticCTA({
       rel="noopener"
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
-      style={reduce ? undefined : { x: sx, y: sy }}
-      whileHover={reduce ? {} : { scale: 1.02 }}
-      whileTap={reduce ? {} : { scale: 0.98 }}
-      className={`relative overflow-hidden sans text-[11px] tracking-[0.16em] uppercase px-7 h-[48px] inline-flex items-center gap-2 transition ${base} group`}
+      style={enableMagnetic ? { x: sx, y: sy, willChange: "transform" as any } : undefined}
+      whileHover={enableMagnetic ? { scale: 1.02 } : {}}
+      whileTap={enableMagnetic ? { scale: 0.98 } : {}}
+      className={`relative overflow-hidden sans text-[11px] tracking-[0.16em] uppercase px-7 h-[48px] inline-flex items-center gap-2 transition ${base} group will-change-transform`}
     >
       <span className="relative z-10 flex items-center gap-2">{children}</span>
       <motion.span
@@ -359,14 +377,20 @@ function Header({ waLink }: { waLink?: string }) {
 
 function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgress: any; item?: PortfolioItem }) {
   const reduce = useReducedMotion();
-  const y = useTransform(scrollYProgress, [0, 1], [0, -14 - (i % 3) * 6]);
-  const scaleParallax = useTransform(scrollYProgress, [0, 0.5], [1, 1.02 - (i % 3) * 0.005]);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia("(min-width: 1024px)");
+    const upd = () => setIsDesktop(m.matches);
+    upd();
+    m.addEventListener("change", upd);
+    return () => m.removeEventListener("change", upd);
+  }, []);
+  const y = useTransform(scrollYProgress, [0, 1], [0, -12 - (i % 3) * 4]);
 
   const isGradient = !item || item.imageUrl.startsWith("gradient:");
   const title = item?.title || `Soft Glam #${i + 1}`;
-  const categoryBadge = item ? item.title : null;
 
-  if (reduce) {
+  if (reduce || !isDesktop) {
     return (
       <div className="group relative aspect-[3/4] overflow-hidden bg-[#F6F1EB] rounded-[22px] border border-[#EDE3DA] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         {isGradient ? (
@@ -393,24 +417,15 @@ function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgres
 
   return (
     <motion.div
-      style={{ y, scale: scaleParallax }}
-      initial={{ opacity: 0, y: 18, scale: 0.98, filter: "blur(4px)" }}
-      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      style={{ y, willChange: "transform" } as any}
+      initial={{ opacity: 0, y: 18, scale: 0.98 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-30px" }}
-      transition={{ delay: i * 0.055, duration: 0.72, ease: EASE }}
+      transition={{ delay: i * 0.055, duration: 0.6, ease: EASE }}
       whileHover={{ y: -6, scale: 1.02, transition: { type: "spring", stiffness: 320, damping: 22 } }}
       className="group relative aspect-[3/4] overflow-hidden bg-[#F6F1EB] rounded-[22px] border border-[#EDE3DA] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_32px_rgba(201,169,110,0.18),0_4px_16px_rgba(0,0,0,0.08)] will-change-transform cursor-pointer"
     >
-      <motion.div
-        className="absolute inset-0"
-        animate={{ y: [0, -4, 0] }}
-        transition={{
-          duration: 5.6 + (i % 4) * 0.6,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: i * 0.18,
-        }}
-      >
+      <div className="absolute inset-0">
         {isGradient ? (
           <>
             <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" />
@@ -427,7 +442,7 @@ function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgres
         ) : (
           <img src={item!.imageUrl} alt={title} loading="lazy" decoding="async" sizes="(max-width: 768px) 42vw, 33vw" className="absolute inset-0 w-full h-full object-cover" />
         )}
-      </motion.div>
+      </div>
 
       <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/55 via-[#1A1A1A]/0 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
       <div className="absolute bottom-0 inset-x-0 p-3 translate-y-1 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition duration-500">
@@ -439,66 +454,6 @@ function PortfolioCard({ i, scrollYProgress, item }: { i: number; scrollYProgres
       </div>
       <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-transparent group-hover:border-[#C9A96E]/30 transition duration-500" />
     </motion.div>
-  );
-}
-
-function UpdatePopup({
-  show,
-  countdown,
-  onDismiss,
-}: {
-  show: boolean;
-  countdown: number;
-  onDismiss: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[80] flex items-start justify-center pt-20 px-4 pointer-events-none"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: -16, scale: 0.96, filter: "blur(8px)" }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -12, scale: 0.96, filter: "blur(6px)" }}
-            transition={{ duration: 0.45, ease: EASE }}
-            className="pointer-events-auto relative w-full max-w-[420px] bg-white/90 backdrop-blur-[16px] rounded-[20px] border border-[#EDE3DA] shadow-[0_16px_40px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.06)] overflow-hidden"
-          >
-            <div className="p-5 md:p-6 flex gap-4">
-              <div className="shrink-0 w-9 h-9 rounded-full bg-[#C9A96E]/15 border border-[#C9A96E]/20 flex items-center justify-center">
-                <span className="w-2 h-2 rounded-full bg-[#C9A96E] animate-pulse" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="sans text-[11px] tracking-[0.14em] uppercase text-[#C9A96E] font-medium">Pembaruan tersedia</div>
-                <div className="serif text-[15px] leading-[1.4] mt-1">Web akan refresh dalam {countdown} detik</div>
-                <div className="sans text-[11px] text-[#1A1A1A]/50 mt-1">Konten terbaru dari dashboard sudah siap.</div>
-              </div>
-              <button
-                onClick={onDismiss}
-                className="shrink-0 sans text-[11px] tracking-[0.12em] uppercase border border-[#EDE3DA] bg-white hover:bg-[#F6F1EB] px-3 h-8 rounded-full transition"
-              >
-                Dismiss
-              </button>
-            </div>
-            <div className="h-[3px] bg-[#F6F1EB] w-full overflow-hidden">
-              <motion.div
-                className="h-full bg-[#C9A96E]"
-                initial={{ width: "100%" }}
-                animate={{ width: "0%" }}
-                transition={{ duration: 5, ease: "linear" }}
-              />
-            </div>
-            <div className="px-5 pb-3 flex items-center gap-2 sans text-[10px] tracking-[0.12em] uppercase text-[#1A1A1A]/35">
-              <span className="w-1 h-1 rounded-full bg-[#C9A96E]" />
-              {countdown} · refresh otomatis
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
@@ -535,7 +490,6 @@ export default function Home() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const hasMountedRef = useRef(false);
-  const lastSeenRef = useRef<string>("0");
   const showRef = useRef(false);
 
   const fetchPortfolio = useCallback(async () => {
@@ -548,7 +502,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchPortfolio();
+    const run = () => fetchPortfolio();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(run, { timeout: 2000 });
+    else run();
   }, [fetchPortfolio]);
 
   useHirenaSync("portfolio", fetchPortfolio, 15000);
@@ -563,7 +519,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchPricesAndWa();
+    const run = () => fetchPricesAndWa();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(run, { timeout: 2000 });
+    else run();
   }, [fetchPricesAndWa]);
 
   useHirenaSync("settings", fetchPricesAndWa, 15000);
@@ -579,63 +537,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // grace period to avoid first load popup
     const grace = window.setTimeout(() => {
       hasMountedRef.current = true;
-      try {
-        lastSeenRef.current = localStorage.getItem("hirena_update_at") || "0";
-      } catch {
-        lastSeenRef.current = "0";
-      }
     }, 2200);
     return () => window.clearTimeout(grace);
   }, []);
 
-  useEffect(() => {
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel(HIRENA_CHANNEL);
-      bc.onmessage = (ev: MessageEvent) => {
-        const t = ev.data?.type;
-        if (t === "portfolio" || t === "bookings" || t === "settings" || !t) triggerUpdate();
-      };
-    } catch {}
-    const onCustom = (e: Event) => {
-      const ce = e as CustomEvent;
-      const t = ce.detail?.type;
-      if (!t || t === "portfolio" || t === "bookings" || t === "settings") triggerUpdate();
-    };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "hirena_update_at") triggerUpdate();
-    };
-    window.addEventListener("hirena:update", onCustom as EventListener);
-    window.addEventListener("hirena:bookings-updated", onCustom as EventListener);
-    window.addEventListener("hirena:photos-updated", onCustom as EventListener);
-    window.addEventListener("storage", onStorage);
-
-    const poll = window.setInterval(() => {
-      try {
-        const cur = localStorage.getItem("hirena_update_at") || "0";
-        if (cur !== lastSeenRef.current && cur !== "0" && hasMountedRef.current) {
-          lastSeenRef.current = cur;
-          triggerUpdate();
-        } else {
-          lastSeenRef.current = cur;
-        }
-      } catch {}
-    }, 15000);
-
-    return () => {
-      try {
-        bc?.close();
-      } catch {}
-      window.removeEventListener("hirena:update", onCustom as EventListener);
-      window.removeEventListener("hirena:bookings-updated", onCustom as EventListener);
-      window.removeEventListener("hirena:photos-updated", onCustom as EventListener);
-      window.removeEventListener("storage", onStorage);
-      window.clearInterval(poll);
-    };
-  }, [triggerUpdate]);
+  // single realtime listener for update popup (15s poll, single BroadcastChannel/storage)
+  useHirenaSync(triggerUpdate, 15000);
 
   useEffect(() => {
     if (!showUpdate) return;
@@ -703,9 +612,9 @@ export default function Home() {
         {/* HERO */}
         <section className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10 pt-8 lg:pt-20 pb-10 lg:pb-20">
           <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-20 items-start">
-            <motion.div style={reduce ? {} : { y: heroY, opacity: heroOpacity, scale: heroScale }} className="will-change-transform">
+            <motion.div style={reduce ? {} : { y: heroY, opacity: heroOpacity, scale: heroScale }} className="will-change-transform text-center lg:text-left">
               <Reveal>
-                <div className="flex items-center gap-3 mb-5 lg:mb-8">
+                <div className="flex items-center gap-3 mb-5 lg:mb-8 justify-center lg:justify-start">
                   <GoldLine spring />
                   <span className="sans text-[10px] tracking-[0.22em] uppercase text-[#C9A96E] font-medium">
                     Price List 2026 · Bandung
@@ -714,7 +623,7 @@ export default function Home() {
               </Reveal>
 
               {reduce ? (
-                <h1 className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]">
+                <h1 className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400] text-center lg:text-left">
                   Soft Glam
                   <br />
                   <span className="serif2 italic font-light text-[#1A1A1A]/80">that still</span>
@@ -725,7 +634,7 @@ export default function Home() {
                 </h1>
               ) : (
                 <motion.h1
-                  className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400]"
+                  className="serif text-[32px] sm:text-[36px] lg:text-[72px] leading-[0.92] tracking-[-0.025em] font-[400] text-center lg:text-left"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -762,7 +671,7 @@ export default function Home() {
               )}
 
               <Reveal delay={0.22}>
-                <p className="sans text-[13px] lg:text-[14px] leading-[1.85] font-light text-[#1A1A1A]/70 max-w-[420px] mt-5 lg:mt-7">
+                <p className="sans text-[13px] lg:text-[14px] leading-[1.85] font-light text-[#1A1A1A]/70 max-w-[420px] mt-5 lg:mt-7 mx-auto lg:mx-0 text-center lg:text-left">
                   Certified Bandung MUA Since 2022. Signature{" "}
                   <span className="text-[#1A1A1A] font-medium">low visual and soft glam look</span> · mostly using mix high
                   end, Asian and local products. Durasi 1.5 to 3 jam, detail oriented.
@@ -774,7 +683,7 @@ export default function Home() {
                   whileInView={reduce ? {} : { opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.52, duration: 0.6, ease: EASE }}
-                  className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-3 w-full lg:w-auto lg:max-w-[420px] max-w-[420px]"
+                  className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-3 w-full max-w-full lg:max-w-[420px] mx-auto lg:mx-0 box-border lg:w-auto"
                 >
                   <motion.a
                     href={waLink}
@@ -783,10 +692,10 @@ export default function Home() {
                     whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
                     whileTap={reduce ? {} : { scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                    className="group relative overflow-hidden w-full lg:w-auto inline-flex items-center justify-center gap-2 sans text-[11px] lg:text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-12 lg:h-[46px] px-6 rounded-full border border-[#1A1A1A] shadow-sm hover:bg-black hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] hover:border-black transition-all duration-300 lg:shrink-0"
+                    className="group relative overflow-hidden w-full lg:w-auto flex-1 lg:flex-none min-w-0 basis-0 lg:basis-auto box-border max-w-full inline-flex items-center justify-center gap-2 sans text-[11px] tracking-[0.16em] uppercase bg-[#1A1A1A] text-white h-12 lg:h-[46px] px-4 lg:px-6 rounded-full border border-[#1A1A1A] shadow-sm hover:bg-black hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] hover:border-black transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
                   >
-                    <span className="relative z-10 flex items-center gap-2">
-                      Cek Slot · WA <span className="text-[#C9A96E] group-hover:translate-x-0.5 transition-transform duration-300">→</span>
+                    <span className="relative z-10 flex items-center gap-2 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis justify-center">
+                      <span className="truncate">Cek Slot · WA</span> <span className="text-[#C9A96E] group-hover:translate-x-0.5 transition-transform duration-300 shrink-0">→</span>
                     </span>
                     <span
                       aria-hidden
@@ -814,14 +723,14 @@ export default function Home() {
                     whileHover={reduce ? {} : { scale: 1.02, y: -1 }}
                     whileTap={reduce ? {} : { scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                    className="w-full lg:w-auto inline-flex items-center justify-center sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white lg:bg-transparent text-[#1A1A1A] h-12 lg:h-[46px] px-6 rounded-full hover:bg-[#F6F1EB] hover:border-[#C9A96E] hover:text-[#1A1A1A] transition-all duration-300 lg:shrink-0"
+                    className="w-full lg:w-auto flex-1 lg:flex-none min-w-0 basis-0 lg:basis-auto box-border max-w-full inline-flex items-center justify-center sans text-[11px] tracking-[0.16em] uppercase border border-[#EDE3DA] bg-white lg:bg-transparent text-[#1A1A1A] h-12 lg:h-[46px] px-4 lg:px-6 rounded-full hover:bg-[#F6F1EB] hover:border-[#C9A96E] hover:text-[#1A1A1A] transition-all duration-300 lg:shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
                   >
                     Price List
                   </motion.a>
                 </motion.div>
               </Reveal>
               <Reveal delay={0.34}>
-                <div className="mt-8 lg:mt-10 grid grid-cols-3 gap-3 lg:flex lg:items-center lg:gap-6 border-t border-[#EDE3DA] pt-6 max-w-[420px]">
+                <div className="mt-8 lg:mt-10 grid grid-cols-3 gap-3 lg:flex lg:items-center lg:gap-6 border-t border-[#EDE3DA] pt-6 w-full max-w-full lg:max-w-[420px] mx-auto lg:mx-0 box-border">
                   <div className="flex -space-x-2 justify-center lg:justify-start col-span-1">
                     {[0, 1, 2].map((i) => (
                       <motion.div
@@ -849,8 +758,8 @@ export default function Home() {
               </Reveal>
             </motion.div>
 
-            {/* right portfolio - hero sample featured */}
-            <div className="relative">
+            {/* right portfolio - hero sample featured - hidden on mobile per fix */}
+            <div className="relative hidden lg:block">
               <div className="hidden xl:block absolute -left-10 top-6 bottom-6">
                 <div
                   className="sans text-[9px] tracking-[0.26em] uppercase text-[#1A1A1A]/30"
@@ -867,8 +776,8 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* mobile snap - premium swipe */}
-              <div className="lg:hidden -mx-6 px-6 relative">
+              {/* mobile snap - hidden on mobile per fix: hapus foto di bawah Price List on mobile, keep desktop grid */}
+              <div className="hidden lg:hidden -mx-6 px-6 relative">
                 <div
                   className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-hide overscroll-x-contain scroll-smooth touch-pan-x"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", scrollPaddingInline: "24px", overscrollBehaviorX: "contain", touchAction: "pan-x pinch-zoom" } as any}
@@ -972,62 +881,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* gallery grid - mobile 1col premium card, desktop 3col */}
-          <motion.div layout className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 mt-2">
-            <AnimatePresence mode="popLayout">
-              {galleryItems.map((item) => {
-                const catName = categories.find((c) => c.id === item.categoryId)?.name || "Tanpa kategori";
-                const isGradient = item.imageUrl.startsWith("gradient:");
-                return (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.94, y: 12 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.94, y: 8 }}
-                    transition={{ duration: 0.42, ease: EASE }}
-                    whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 22 } }}
-                    onClick={() => setPreview(item)}
-                    className="group relative bg-[#FFFCFA] rounded-[22px] border border-[#EDE3DA] overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] hover:border-[#C9A96E]/20 cursor-pointer will-change-transform"
-                  >
-                    <div className="aspect-[4/3] lg:aspect-[3/4] relative overflow-hidden bg-[#F6F1EB]">
-                      {isGradient ? (
-                        <>
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" />
-                          <div className="absolute inset-0 opacity-30" style={{ background: `radial-gradient(120% 80% at 32% 22%, #C9A96E 0%, transparent 60%)` }} />
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-[68%] bg-gradient-to-t from-[#1A1A1A]/10 to-transparent rounded-t-full" />
-                          <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-[38%] h-[24%] rounded-full bg-gradient-to-b from-[#EDE3DA] to-[#C9A96E]/20" />
-                        </>
-                      ) : (
-                        <img src={item.imageUrl} alt={item.title} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 33vw" className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-700" />
-                      )}
-                      <div className="absolute top-3 left-3 sans text-[10px] tracking-[0.12em] uppercase bg-white/90 backdrop-blur px-3 py-1 rounded-full border border-[#EDE3DA] shadow-sm">
-                        {catName}
-                      </div>
-                      {item.featured && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#C9A96E] border-2 border-white shadow" />}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/0 via-transparent to-transparent group-hover:from-[#1A1A1A]/30 transition duration-500" />
-                    </div>
-                    <div className="p-3 lg:p-4">
-                      <div className="serif text-[15px] leading-[1.3] truncate">{item.title}</div>
-                      <div className="sans text-[11px] leading-[1.6] text-[#1A1A1A]/50 truncate mt-1">{item.description || "Soft glam look"}</div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="sans text-[10px] tracking-[0.14em] uppercase text-[#C9A96E] group-hover:text-[#8A6A2E] transition">Lihat detail</span>
-                        <span className="w-6 h-6 rounded-full border border-[#EDE3DA] bg-[#F6F1EB] group-hover:bg-[#1A1A1A] group-hover:border-[#1A1A1A] flex items-center justify-center transition">
-                          <span className="text-[11px] leading-none group-hover:text-white transition">↗</span>
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
-
-          {galleryItems.length === 0 && (
-            <div className="mt-6 sans text-[13px] text-[#1A1A1A]/40 bg-[#F6F1EB] rounded-[16px] border border-dashed border-[#EDE3DA] p-10 text-center">
-              Belum ada foto di kategori ini.
-            </div>
-          )}
+          {/* gallery grid - extracted to dynamic GalleryGrid for code splitting */}
+          <GalleryGrid items={galleryItems} categories={categories} onPreview={setPreview} />
 
           <Reveal delay={0.12}>
             <div className="mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
@@ -1042,53 +897,8 @@ export default function Home() {
         </section>
 
         {/* preview modal */}
-        <AnimatePresence>
-          {preview && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8"
-              onClick={() => setPreview(null)}
-            >
-              <div className="absolute inset-0 bg-[#1A1A1A]/70 backdrop-blur-[8px]" />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 12 }}
-                transition={{ duration: 0.34, ease: EASE }}
-                onClick={(e) => e.stopPropagation()}
-                className="relative w-full max-w-[560px] bg-[#FFFCFA] rounded-[22px] border border-[#EDE3DA] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)] max-h-[86vh] flex flex-col"
-              >
-                <div className="relative aspect-[4/3] bg-[#F6F1EB] overflow-hidden shrink-0">
-                  {preview.imageUrl.startsWith("gradient:") ? (
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#FFFCFA] via-[#F6F1EB] to-[#EDE3DA]" />
-                  ) : (
-                    <img src={preview.imageUrl} alt={preview.title} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 560px" className="w-full h-full object-cover" />
-                  )}
-                  <button onClick={() => setPreview(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 backdrop-blur border border-[#EDE3DA] flex items-center justify-center hover:bg-white transition">
-                    <span className="text-[16px] leading-none">×</span>
-                  </button>
-                  <div className="absolute bottom-3 left-3 sans text-[11px] tracking-[0.12em] uppercase bg-white/90 backdrop-blur px-3 py-1 rounded-full border border-[#EDE3DA]">
-                    {categories.find((c) => c.id === preview.categoryId)?.name || preview.categoryId}
-                  </div>
-                </div>
-                <div className="p-5 md:p-6 overflow-auto">
-                  <div className="serif text-[20px] md:text-[22px] leading-[1.2]">{preview.title}</div>
-                  <div className="sans text-[12px] leading-[1.7] text-[#1A1A1A]/60 mt-2">{preview.description || "Soft glam look by Hirena Makeup"}</div>
-                  <div className="mt-5 flex gap-2">
-                    <a href={waLink} target="_blank" rel="noopener" className="flex-1 bg-[#1A1A1A] text-white sans text-[11px] tracking-[0.14em] uppercase h-10 inline-flex items-center justify-center hover:bg-black transition rounded-full">
-                      Tanya Look Ini via WA
-                    </a>
-                    <button onClick={() => setPreview(null)} className="px-6 h-10 border border-[#EDE3DA] bg-white sans text-[11px] tracking-[0.14em] uppercase hover:bg-[#F6F1EB] transition rounded-full">
-                      Tutup
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* portfolio modal - dynamic import for code splitting */}
+        <PortfolioModal preview={preview} categories={categories} waLink={waLink} onClose={() => setPreview(null)} />
 
         {/* ASAL USUL */}
         <section className="relative z-10 bg-[#F6F1EB] border-y border-[#EDE3DA]">

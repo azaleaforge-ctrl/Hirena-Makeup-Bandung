@@ -6,15 +6,15 @@ import { HIRENA_CHANNEL } from "./db";
 export const HIRENA_SYNC_CHANNEL = HIRENA_CHANNEL;
 const STORAGE_KEY = "hirena_update_at";
 
-export function broadcastHirena(type: "portfolio" | "bookings" | "settings" | "prices"): void {
+export type HirenaUpdateType = "portfolio" | "bookings" | "settings" | "prices";
+
+export function broadcastHirena(type: HirenaUpdateType): void {
   try {
     new BroadcastChannel(HIRENA_CHANNEL).postMessage({ type, at: Date.now() });
   } catch {}
   try {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("hirena:update", { detail: { type } }));
-      if (type === "bookings") window.dispatchEvent(new Event("hirena:bookings-updated"));
-      if (type === "portfolio") window.dispatchEvent(new Event("hirena:photos-updated"));
       localStorage.setItem(STORAGE_KEY, String(Date.now()));
     }
   } catch {}
@@ -47,19 +47,10 @@ function useHirenaRealtimeInternal(callback: () => void, typeFilter: string | un
     };
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) trigger();
-      // also handle legacy keys if any
-    };
-    const onLegacyBookings = () => {
-      if (!typeFilter || typeFilter === "bookings") trigger();
-    };
-    const onLegacyPortfolio = () => {
-      if (!typeFilter || typeFilter === "portfolio") trigger();
     };
 
     window.addEventListener("hirena:update", onCustom as EventListener);
     window.addEventListener("storage", onStorage);
-    window.addEventListener("hirena:bookings-updated", onLegacyBookings);
-    window.addEventListener("hirena:photos-updated", onLegacyPortfolio);
 
     const interval = window.setInterval(() => trigger(), intervalMs);
 
@@ -69,8 +60,6 @@ function useHirenaRealtimeInternal(callback: () => void, typeFilter: string | un
       } catch {}
       window.removeEventListener("hirena:update", onCustom as EventListener);
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("hirena:bookings-updated", onLegacyBookings);
-      window.removeEventListener("hirena:photos-updated", onLegacyPortfolio);
       window.clearInterval(interval);
     };
   }, [typeFilter, intervalMs, trigger]);
@@ -78,11 +67,11 @@ function useHirenaRealtimeInternal(callback: () => void, typeFilter: string | un
   return trigger;
 }
 
-// Exported hook: useHirenaSync supports (callback) or (typeFilter, callback) or (typeFilter)
+// Exported hook: useHirenaSync supports (callback) or (typeFilter, callback) - single listener 15s
 export function useHirenaSync(
   typeOrCallback?: string | (() => void),
   callbackOrInterval?: (() => void) | number,
-  intervalMs = 10000
+  intervalMs = 15000
 ): () => void {
   let typeFilter: string | undefined;
   let callback: () => void = () => {};
@@ -102,8 +91,7 @@ export function useHirenaSync(
   return useHirenaRealtimeInternal(callback, typeFilter, interval);
 }
 
-// Alias per spec: useHirenaRealtime
-export function useHirenaRealtime(callback: () => void, intervalMs = 10000): () => void {
+export function useHirenaRealtime(callback: () => void, intervalMs = 15000): () => void {
   return useHirenaRealtimeInternal(callback, undefined, intervalMs);
 }
 

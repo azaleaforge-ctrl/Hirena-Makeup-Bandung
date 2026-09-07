@@ -104,18 +104,15 @@ const DB_VERSION = 2;
 export const HIRENA_CHANNEL = "hirena-sync";
 const HIRENA_STORAGE_KEY = "hirena_update_at";
 
-export function broadcastUpdate(type: "portfolio" | "bookings" | "settings" | "prices", payload?: unknown): void {
+export type HirenaUpdateType = "portfolio" | "bookings" | "settings" | "prices";
+
+export function broadcastUpdate(type: HirenaUpdateType, payload?: unknown): void {
   void payload;
   try {
     new BroadcastChannel(HIRENA_CHANNEL).postMessage({ type, at: Date.now() });
   } catch {}
   try {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("hirena:update", { detail: { type } }));
-      // legacy event names for BookingCalendar still listening
-      if (type === "bookings") window.dispatchEvent(new Event("hirena:bookings-updated"));
-      if (type === "portfolio") window.dispatchEvent(new Event("hirena:photos-updated"));
-    }
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("hirena:update", { detail: { type } }));
   } catch {}
   try {
     if (typeof window !== "undefined") localStorage.setItem(HIRENA_STORAGE_KEY, String(Date.now()));
@@ -222,8 +219,6 @@ function _addDaysStr(base: Date, offset: number): string {
   d.setDate(d.getDate() + offset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-void _todayStr;
-void _addDaysStr;
 
 function slugify(input: string): string {
   return input
@@ -459,11 +454,9 @@ async function ensureSeedSettings(db: IDBPDatabase<HirenaDB>) {
   if (!existing) {
     const s: Settings = {
       id: "main",
-      waLink: "https://wa.me/6285179763693?text=Halo%20Hirena%20Makeup%20saya%20mau%20tanya%20slot%20makeup",
+      waLink: buildWaLink("6285179763693"),
       waNumber: "6285179763693",
       transportNote: "Bandung and Cimahi 50K to 150K (max 20KM). Luar Bandung +1.000K + transport / makan / akomodasi.",
-      priceBasic: "350K",
-      pricePremium: "550K",
       prices: getDefaultPrices(),
     };
     await db.put("settings", s);
@@ -584,35 +577,6 @@ export function needsRealtime(booking: Booking): boolean {
   return isBookingCompleted(booking);
 }
 
-// legacy photos wrappers for compatibility (map to portfolioItems)
-export async function getPhotos(): Promise<Photo[]> {
-  const items = await getPortfolioItems();
-  return items.map((p) => ({ id: p.id, url: p.imageUrl, label: p.title, order: p.order })).sort((a, b) => a.order - b.order);
-}
-
-export async function savePhoto(photo: Photo): Promise<void> {
-  const db = await getDb();
-  await ensureSeedCategories(db);
-  const cats = await db.getAll("portfolioCategories");
-  const defaultCatId = cats.find((c) => c.slug === "soft-glam")?.id || cats[0]?.id || "soft-glam";
-  const item: PortfolioItem = {
-    id: photo.id || uid(),
-    categoryId: defaultCatId,
-    title: photo.label,
-    description: photo.label,
-    imageUrl: photo.url,
-    featured: photo.order < 6,
-    order: photo.order,
-    createdAt: new Date().toISOString(),
-  };
-  await db.put("portfolioItems", item);
-  broadcastUpdate("portfolio");
-}
-
-export async function deletePhoto(id: string): Promise<void> {
-  await deletePortfolioItem(id);
-}
-
 // exported API bookings
 export async function getBookings(): Promise<Booking[]> {
   const db = await getDb();
@@ -703,8 +667,8 @@ export async function verifyPassword(password: string): Promise<boolean> {
   return timingSafeEqual(hash, auth.passwordHash);
 }
 
-// util for image resize to base64 ~800px
-// honey: thumb helper 600px for grid to reduce base64 payload vs 800px excess
+// util for image resize to base64 ~800px with 0.7 compression for perf
+// honey: thumb 600px + jpeg 0.7 reduces base64 ~40% vs 800px 0.82
 export function fileToThumbDataURL(file: File): Promise<string> {
   return fileToResizedDataURL(file, 600);
 }
@@ -726,7 +690,7 @@ export function fileToResizedDataURL(file: File, maxSize = 800): Promise<string>
         const ctx = canvas.getContext("2d");
         if (!ctx) return reject(new Error("canvas failed"));
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
       };
       img.onerror = () => reject(new Error("image load failed"));
       img.src = reader.result as string;
